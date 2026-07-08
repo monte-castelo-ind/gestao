@@ -257,7 +257,7 @@ let periodo='30d', pagina='overview';
 let estoque=[], chamados=[];
 let subE=null, subC=null;
 let sessaoEmail='', currentRole=null, currentAtivo=false;
-const CORES=['#3b6ef5','#6b93f7','#97b4fa','#c0d2fc','#4a5a7a','#7a89a8','#aab6cd','#d6def0'];
+const CORES=['#3b6ef5','#f5b013','#2bb6a4','#8b7fe8','#6b93f7','#f08a5d','#97b4fa','#a7b6d4'];
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -387,7 +387,7 @@ function render(){
     document.getElementById('c-servicos').innerHTML = barsHTML(Object.keys(cServ).map(s=>({nome:s,val:cServ[s]})).sort((a,b)=>b.val-a.val),'Nenhum serviço registrado no período.');
     const tt={}; cRef.forEach(e=>{ const ent=parseBR(e.dataEntrada),con=conclusaoDe(e); if(ent&&con){ const d=Math.round((con-ent)/86400000); if(d>=0){ const k=e.tipo||'—'; (tt[k]=tt[k]||[]).push(d); } } });
     document.getElementById('c-tempotipo').innerHTML = barsHTML(Object.keys(tt).map(k=>({nome:k,val:Math.round(tt[k].reduce((a,b)=>a+b,0)/tt[k].length)})).sort((a,b)=>b.val-a.val),'Sem dados no período.','d');
-    document.getElementById('c-fluxo').innerHTML = monthPairBars(estoque, e=>parseBR(e.dataEntrada), e=>parseBR(e.dataSaida), '#3b6ef5', '#93b4c9', 'Entradas', 'Saídas');
+    document.getElementById('c-fluxo').innerHTML = monthPairBars(estoque, e=>parseBR(e.dataEntrada), e=>parseBR(e.dataSaida), '#3b6ef5', '#2bb6a4', 'Entradas', 'Saídas');
     document.getElementById('c-parados').innerHTML = agingComodato();
     document.getElementById('c-table').innerHTML = tabelaComodato();
   }
