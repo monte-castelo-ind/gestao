@@ -257,7 +257,7 @@ let periodo='30d', pagina='overview';
 let estoque=[], chamados=[];
 let subE=null, subC=null;
 let sessaoEmail='', currentRole=null, currentAtivo=false;
-const CORES=['#3b6ef5','#f5b013','#16b364','#8b5cf6','#ef4444','#06b6d4','#ec4899','#f97316','#6366f1','#84cc16'];
+const CORES=['#3b6ef5','#6b93f7','#97b4fa','#c0d2fc','#4a5a7a','#7a89a8','#aab6cd','#d6def0'];
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -269,7 +269,7 @@ function agrupar(itens,chave){ const m={}; itens.forEach(e=>{const k=e[chave]||'
 
 function kpiCard(label,num,ico,tint,foot){
   return '<div class="card"><div class="kpi-top"><div class="kpi-label">'+label+'</div><div class="kpi-ico" style="background:'+tint+'22;color:'+tint+';">'+ico+'</div></div>'+
-    '<div class="kpi-num" style="color:'+tint+';">'+num+'</div>'+(foot?'<div class="kpi-foot">'+foot+'</div>':'')+'</div>';
+    '<div class="kpi-num">'+num+'</div>'+(foot?'<div class="kpi-foot">'+foot+'</div>':'')+'</div>';
 }
 function donutHTML(itens,total,rot){
   if(!itens.length||!total){ return '<div class="empty">Sem dados no período.</div>'; }
@@ -382,12 +382,12 @@ function render(){
       kpiCard('Saíram no período', cSai.length, '🚚','#3b6ef5') +
       kpiCard('Tempo médio', tempoMedio(cRef), '⏱️','#8b5cf6');
     document.getElementById('c-donut').innerHTML = donutHTML(agrupar(cRef,'tipo'), cRef.length, 'reformas');
-    document.getElementById('c-bars').innerHTML = monthBars(estoque.filter(e=>conclusaoDe(e)), conclusaoDe, '#16b364');
+    document.getElementById('c-bars').innerHTML = monthBars(estoque.filter(e=>conclusaoDe(e)), conclusaoDe, '#3b6ef5');
     const cServ={}; cRef.forEach(e=>(e.servicos||[]).forEach(s=>cServ[s]=(cServ[s]||0)+1));
     document.getElementById('c-servicos').innerHTML = barsHTML(Object.keys(cServ).map(s=>({nome:s,val:cServ[s]})).sort((a,b)=>b.val-a.val),'Nenhum serviço registrado no período.');
     const tt={}; cRef.forEach(e=>{ const ent=parseBR(e.dataEntrada),con=conclusaoDe(e); if(ent&&con){ const d=Math.round((con-ent)/86400000); if(d>=0){ const k=e.tipo||'—'; (tt[k]=tt[k]||[]).push(d); } } });
     document.getElementById('c-tempotipo').innerHTML = barsHTML(Object.keys(tt).map(k=>({nome:k,val:Math.round(tt[k].reduce((a,b)=>a+b,0)/tt[k].length)})).sort((a,b)=>b.val-a.val),'Sem dados no período.','d');
-    document.getElementById('c-fluxo').innerHTML = monthPairBars(estoque, e=>parseBR(e.dataEntrada), e=>parseBR(e.dataSaida), '#3b6ef5', '#16b364', 'Entradas', 'Saídas');
+    document.getElementById('c-fluxo').innerHTML = monthPairBars(estoque, e=>parseBR(e.dataEntrada), e=>parseBR(e.dataSaida), '#3b6ef5', '#93b4c9', 'Entradas', 'Saídas');
     document.getElementById('c-parados').innerHTML = agingComodato();
     document.getElementById('c-table').innerHTML = tabelaComodato();
   }
