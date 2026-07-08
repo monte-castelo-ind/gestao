@@ -245,6 +245,7 @@ const appP = initializeApp(configPredial, 'predial');
 const dbC = getFirestore(appC);
 const dbP = getFirestore(appP);
 const auth = getAuth(appC);
+const authP = getAuth(appP);
 
 let periodo='30d', pagina='overview';
 let estoque=[], chamados=[];
@@ -412,17 +413,27 @@ function liberar(d){
   const nome=d.nome||sessaoEmail; document.getElementById('uname').textContent=nome;
   document.getElementById('uavatar').textContent=(nome||'?').trim().charAt(0).toUpperCase();
   if(!subE){ subE=onSnapshot(collection(dbC,'equipamentosEstoque'), s=>{ estoque=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.error('estoque:',e)); }
-  if(!subC){ subC=onSnapshot(collection(dbP,'chamados'), s=>{ chamados=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.error('chamados:',e)); }
   render();
 }
 
 // AUTH
 const overlay=document.getElementById('authOverlay'), emailEl=document.getElementById('authEmail'), senhaEl=document.getElementById('authSenha'), btn=document.getElementById('authBtn'), erro=document.getElementById('authErro');
 onAuthStateChanged(auth, user=>{ if(user){ overlay.style.display='none'; iniciarSessao(user); } else { overlay.style.display='flex'; document.getElementById('app').style.display='none'; } });
-async function entrar(){ const em=(emailEl.value||'').trim(), pw=(senhaEl.value||'').trim(); erro.textContent=''; if(!em||!pw){erro.textContent='Preencha e-mail e senha';return;} btn.disabled=true; try{ await signInWithEmailAndPassword(auth,em,pw); location.reload(); }catch(e){ console.log('login:',e.code); erro.textContent=e.code||'Erro ao entrar'; btn.disabled=false; } }
+onAuthStateChanged(authP, puser=>{
+  if(puser && !subC){
+    subC=onSnapshot(collection(dbP,'chamados'), s=>{ chamados=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); },
+      e=>{ console.warn('chamados (predial):', e.code||e.message); });
+  }
+});
+async function entrar(){ const em=(emailEl.value||'').trim(), pw=(senhaEl.value||'').trim(); erro.textContent=''; if(!em||!pw){erro.textContent='Preencha e-mail e senha';return;} btn.disabled=true;
+  try{
+    await signInWithEmailAndPassword(auth,em,pw);
+    try{ await signInWithEmailAndPassword(authP,em,pw); }catch(e2){ console.warn('Predial login falhou:', e2.code||e2.message); }
+  }catch(e){ console.log('login:',e.code); erro.textContent=e.code||'Erro ao entrar'; btn.disabled=false; }
+}
 btn.addEventListener('click',entrar);
 [emailEl,senhaEl].forEach(el=>el.addEventListener('keydown',e=>{ if(e.key==='Enter')entrar(); }));
-window.sairApp=()=>signOut(auth).then(()=>location.reload());
+window.sairApp=()=>Promise.allSettled([signOut(auth),signOut(authP)]).then(()=>location.reload());
 
 setTimeout(()=>{ document.getElementById('loading').style.display='none'; },1200);
 </script>
