@@ -205,6 +205,12 @@
           <div class="card"><div class="card-title">O que mais foi reformado</div><div class="card-sub">Por tipo · no período</div><div id="c-donut"></div></div>
           <div class="card"><div class="card-title">Reformas por mês</div><div class="card-sub">Últimos 6 meses</div><div id="c-bars"></div></div>
         </div>
+        <div class="grid cols-2" style="margin-top:16px;">
+          <div class="card"><div class="card-title">Serviços mais realizados</div><div class="card-sub">No período</div><div id="c-servicos"></div></div>
+          <div class="card"><div class="card-title">Tempo médio de reforma por tipo</div><div class="card-sub">Entrada → conclusão · no período</div><div id="c-tempotipo"></div></div>
+        </div>
+        <div class="card" style="margin-top:16px;"><div class="card-title">Entradas × Saídas por mês</div><div class="card-sub">Fluxo · últimos 6 meses</div><div id="c-fluxo"></div></div>
+        <div class="card" style="margin-top:16px;"><div class="card-title">Itens parados há mais tempo</div><div class="card-sub">Em manutenção · do mais antigo</div><div id="c-parados"></div></div>
         <div class="card" style="margin-top:16px;">
           <div class="card-title" style="display:flex;align-items:center;">Equipamentos <a class="ext" href="https://monte-castelo-ind.github.io/manutencao/" target="_blank" rel="noopener">abrir app ↗</a></div>
           <div class="card-sub">Mais recentes</div>
@@ -275,10 +281,36 @@ function donutHTML(itens,total,rot){
   const leg=itens.map((it,i)=>{ const cor=CORES[i%CORES.length],pct=Math.round(it.val/total*100); return '<div class="legend-row"><span class="legend-dot" style="background:'+cor+';"></span><span class="legend-name">'+esc(it.nome)+'</span><span class="legend-val">'+it.val+' · '+pct+'%</span></div>'; }).join('');
   return svg+leg;
 }
-function barsHTML(itens,vazio){
+function barsHTML(itens,vazio,suf){
   if(!itens.length){ return '<div class="empty">'+(vazio||'Sem dados.')+'</div>'; }
   const max=itens[0].val||1;
-  return itens.map((it,i)=>{ const cor=CORES[i%CORES.length],w=Math.round(it.val/max*100); return '<div class="bar-row"><div class="bar-head"><span class="legend-name">'+esc(it.nome)+'</span><span class="legend-val">'+it.val+'</span></div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;background:'+cor+';"></div></div></div>'; }).join('');
+  return itens.map((it,i)=>{ const cor=CORES[i%CORES.length],w=Math.round(it.val/max*100); return '<div class="bar-row"><div class="bar-head"><span class="legend-name">'+esc(it.nome)+'</span><span class="legend-val">'+it.val+(suf||'')+'</span></div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;background:'+cor+';"></div></div></div>'; }).join('');
+}
+
+function monthPairBars(itens, fnA, fnB, corA, corB, labA, labB){
+  const now=new Date(),bk=[];
+  for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); bk.push({y:d.getFullYear(),m:d.getMonth(),a:0,b:0}); }
+  itens.forEach(e=>{ const da=fnA(e),db=fnB(e); for(const x of bk){ if(da&&da.getFullYear()===x.y&&da.getMonth()===x.m)x.a++; if(db&&db.getFullYear()===x.y&&db.getMonth()===x.m)x.b++; } });
+  const max=Math.max(1,...bk.map(x=>Math.max(x.a,x.b)));
+  const W=520,H=190,padB=30,padT=18,gW=W/6,bw=Math.min(24,(gW-14)/2);
+  let bars='';
+  bk.forEach((b,i)=>{ const gx=i*gW+(gW-(bw*2+6))/2; const ha=(H-padB-padT)*(b.a/max),hb=(H-padB-padT)*(b.b/max); const ya=H-padB-ha,yb=H-padB-hb;
+    bars+='<rect x="'+gx.toFixed(1)+'" y="'+ya.toFixed(1)+'" width="'+bw+'" height="'+Math.max(2,ha).toFixed(1)+'" rx="5" fill="'+corA+'"></rect>';
+    bars+='<rect x="'+(gx+bw+6).toFixed(1)+'" y="'+yb.toFixed(1)+'" width="'+bw+'" height="'+Math.max(2,hb).toFixed(1)+'" rx="5" fill="'+corB+'"></rect>';
+    if(b.a>0)bars+='<text x="'+(gx+bw/2).toFixed(1)+'" y="'+(ya-5).toFixed(1)+'" text-anchor="middle" style="fill:var(--text);font:600 10px Inter;">'+b.a+'</text>';
+    if(b.b>0)bars+='<text x="'+(gx+bw+6+bw/2).toFixed(1)+'" y="'+(yb-5).toFixed(1)+'" text-anchor="middle" style="fill:var(--text);font:600 10px Inter;">'+b.b+'</text>';
+    bars+='<text x="'+(gx+bw+3).toFixed(1)+'" y="'+(H-10)+'" text-anchor="middle" style="fill:var(--muted);font:500 11px Inter;">'+MESES[b.m]+'</text>';
+  });
+  const leg='<div style="display:flex;gap:16px;justify-content:center;margin-top:6px;font-size:12.5px;"><span style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;border-radius:3px;background:'+corA+';display:inline-block;"></span>'+labA+'</span><span style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;border-radius:3px;background:'+corB+';display:inline-block;"></span>'+labB+'</span></div>';
+  return '<div style="margin-top:8px;"><svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-height:210px;">'+bars+'</svg></div>'+leg;
+}
+
+function agingComodato(){
+  const hoje=new Date(); hoje.setHours(12,0,0,0);
+  const itens=estoque.filter(e=>e.status==='aguardando'||e.status==='andamento').map(e=>{ const ent=parseBR(e.dataEntrada); return {e,dias:ent?Math.round((hoje-ent)/86400000):null}; }).filter(x=>x.dias!=null).sort((a,b)=>b.dias-a.dias).slice(0,8);
+  if(!itens.length) return '<div class="empty">Nenhum item parado no momento.</div>';
+  return itens.map(({e,dias})=>{ const [lbl,cor]=statusInfo('c',e.status); const al=dias>=15?'#ef4444':(dias>=7?'#f5b013':'var(--muted)');
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--border);"><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(e.tipo||'—')+' · '+esc(e.patrimonio||'—')+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Entrada '+esc(e.dataEntrada||'—')+' · <span class="pill" style="background:'+cor+'22;color:'+cor+';font-size:10.5px;padding:1px 8px;">'+lbl+'</span></div></div><div style="text-align:right;font-weight:700;color:'+al+';white-space:nowrap;">'+dias+'<span style="font-size:11px;font-weight:500;"> dias</span></div></div>'; }).join('');
 }
 function monthBars(itens,dateFn,cor){
   const now=new Date(),bk=[];
@@ -351,6 +383,12 @@ function render(){
       kpiCard('Tempo médio', tempoMedio(cRef), '⏱️','#8b5cf6');
     document.getElementById('c-donut').innerHTML = donutHTML(agrupar(cRef,'tipo'), cRef.length, 'reformas');
     document.getElementById('c-bars').innerHTML = monthBars(estoque.filter(e=>conclusaoDe(e)), conclusaoDe, '#16b364');
+    const cServ={}; cRef.forEach(e=>(e.servicos||[]).forEach(s=>cServ[s]=(cServ[s]||0)+1));
+    document.getElementById('c-servicos').innerHTML = barsHTML(Object.keys(cServ).map(s=>({nome:s,val:cServ[s]})).sort((a,b)=>b.val-a.val),'Nenhum serviço registrado no período.');
+    const tt={}; cRef.forEach(e=>{ const ent=parseBR(e.dataEntrada),con=conclusaoDe(e); if(ent&&con){ const d=Math.round((con-ent)/86400000); if(d>=0){ const k=e.tipo||'—'; (tt[k]=tt[k]||[]).push(d); } } });
+    document.getElementById('c-tempotipo').innerHTML = barsHTML(Object.keys(tt).map(k=>({nome:k,val:Math.round(tt[k].reduce((a,b)=>a+b,0)/tt[k].length)})).sort((a,b)=>b.val-a.val),'Sem dados no período.','d');
+    document.getElementById('c-fluxo').innerHTML = monthPairBars(estoque, e=>parseBR(e.dataEntrada), e=>parseBR(e.dataSaida), '#3b6ef5', '#16b364', 'Entradas', 'Saídas');
+    document.getElementById('c-parados').innerHTML = agingComodato();
     document.getElementById('c-table').innerHTML = tabelaComodato();
   }
   // PREDIAL
