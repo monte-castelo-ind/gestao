@@ -141,7 +141,7 @@
 </div>
 
 <!-- NEGADO -->
-<div class="page" id="s-negado" style="min-height:100vh;display:flex;align-items:center;justify-content:center;">
+<div class="page" id="s-negado" style="min-height:100vh;display:none;align-items:center;justify-content:center;">
   <div style="text-align:center;padding:32px;max-width:340px;">
     <div style="font-size:50px;">🔒</div>
     <div style="font-size:20px;font-weight:700;margin-top:10px;">Sem acesso</div>
@@ -406,9 +406,9 @@ function iniciarSessao(user){
     liberar(d);
   }, err=>{ console.error(err); negar('Não foi possível carregar suas permissões.'); });
 }
-function negar(msg){ document.getElementById('negado-msg').textContent=msg; document.getElementById('app').style.display='none'; document.getElementById('s-negado').classList.add('active'); }
+function negar(msg){ document.getElementById('negado-msg').textContent=msg; document.getElementById('app').style.display='none'; document.getElementById('s-negado').style.display='flex'; document.getElementById('s-negado').classList.add('active'); }
 function liberar(d){
-  document.getElementById('s-negado').classList.remove('active');
+  document.getElementById('s-negado').style.display='none'; document.getElementById('s-negado').classList.remove('active');
   document.getElementById('app').style.display='flex';
   const nome=d.nome||sessaoEmail; document.getElementById('uname').textContent=nome;
   document.getElementById('uavatar').textContent=(nome||'?').trim().charAt(0).toUpperCase();
