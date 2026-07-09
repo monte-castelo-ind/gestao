@@ -188,6 +188,7 @@
       <button class="nav-item" data-page="embalacao" onclick="nav('embalacao')"><span class="ico">📦</span> Embalação</button>
     </div>
     <div class="sidebar-foot">
+      <button class="nav-item" data-page="config" onclick="nav('config')"><span class="ico">⚙️</span> Configurações</button>
       <button class="nav-item" onclick="toggleTheme()"><span class="ico" id="theme-ico">🌙</span> <span id="theme-txt">Tema escuro</span></button>
       <button class="nav-item" onclick="sairApp()"><span class="ico">↩︎</span> Sair</button>
     </div>
@@ -312,12 +313,36 @@
         </div>
       </div>
     </div>
+    <div class="page" id="page-config">
+      <div class="content" style="max-width:620px;">
+        <div class="card">
+          <div class="card-title">⚙️ Meta de produção · Confeitaria</div>
+          <div class="card-sub">Em kg. Usada no medidor "Meta × Realizado".</div>
+          <div style="font-size:13px;font-weight:600;margin:14px 0 6px;">Meta padrão mensal (kg)</div>
+          <input type="number" id="cfg-meta-padrao" placeholder="ex.: 30000" style="width:100%;box-sizing:border-box;background:var(--card-2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 12px;font-size:14px;font-family:inherit;">
+          <div style="font-size:13px;font-weight:600;margin:20px 0 6px;">Meta de um mês específico (sobrepõe a padrão)</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <select id="cfg-mes" class="chip chip-sel" style="min-width:90px;"></select>
+            <select id="cfg-ano" class="chip chip-sel" style="min-width:80px;"></select>
+            <input type="number" id="cfg-meta-mes" placeholder="kg" style="width:100%;box-sizing:border-box;background:var(--card-2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 12px;font-size:14px;font-family:inherit;flex:1;min-width:90px;width:auto;">
+            <button onclick="addMetaMes()" style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:11px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">Adicionar</button>
+          </div>
+          <div id="cfg-metas-lista" style="margin-top:12px;"></div>
+          <button onclick="salvarConfig()" style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:11px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;width:100%;margin-top:18px;">Salvar meta padrão</button>
+          <div id="cfg-status" style="text-align:center;font-size:13px;color:var(--muted);margin-top:10px;min-height:16px;"></div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <div class="card-title">Como funciona</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.7;">A <b>meta padrão</b> vale pra qualquer mês. Adicione uma meta específica só se algum mês tiver alvo diferente — ela sobrepõe a padrão naquele mês. No medidor, a meta se ajusta ao período que você está vendo (filtrou "Julho/2026" → usa a meta de julho; filtrou o ano → soma os meses).</div>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const configComodato = { apiKey:"AIzaSyCH_t074MvkJn-qVMvCtLfEMaQHf_e_d7M", authDomain:"manutencao-comodato.firebaseapp.com", projectId:"manutencao-comodato", storageBucket:"manutencao-comodato.firebasestorage.app", messagingSenderId:"89709396101", appId:"1:89709396101:web:22ee225ffa806e07a269ec" };
@@ -335,11 +360,12 @@ const dbProd = getFirestore(appProd);
 
 let periodo='30d', pagina='overview', filtroAno='', filtroMes='';
 let estoque=[], chamados=[], registros=[], prodCatalog={}, presencas=[];
-let subE=null, subC=null, subR=null, subCat=null, subPres=null;
+let subE=null, subC=null, subR=null, subCat=null, subPres=null, subCfg=null;
 let sessaoEmail='', currentRole=null, currentAtivo=false;
 const CORES=['#1f9d6b','#3b6ef5','#f5b013','#12b3a6','#8b7fe8','#6bbf8f','#f08a5d','#a7c4b5'];
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const META_CONF_KG = 30000; // <<< META mensal de kg da Confeitaria (ajuste aqui)
+const META_CONF_KG = 30000; // fallback inicial (editável na tela Configurações)
+let config = { metaPadrao: META_CONF_KG, metas: {} };
 
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function parseBR(s){ if(!s||typeof s!=='string')return null; const p=s.split('/'); if(p.length!==3)return null; const d=+p[0],m=+p[1],y=+p[2]; if(!d||!m||!y)return null; return new Date(y,m-1,d,12,0,0); }
@@ -351,6 +377,12 @@ function agruparSoma(itens,chave,valfn){ const m={}; itens.forEach(e=>{const k=e
 function pesoPctDe(r){ if(r.prodData&&r.prodData.pesoPct) return r.prodData.pesoPct; if(r.cod!=null&&prodCatalog['c:'+r.cod]) return prodCatalog['c:'+r.cod]; if(r.produto&&prodCatalog['n:'+r.produto]) return prodCatalog['n:'+r.produto]; return 0; }
 function kgReg(r){ return ((r.qtdPacotes||r.qtd||0)*pesoPctDe(r))/1000; }
 function fmtKg(v){ return (v||0).toLocaleString('pt-BR',{maximumFractionDigits: v>=100?0:1}); }
+function metaDoPeriodo(){ const r=range(); let d=new Date(r.de.getFullYear(),r.de.getMonth(),1); const end=new Date(r.ate.getFullYear(),r.ate.getMonth(),1); let meta=0,g=0; while(d<=end&&g<120){ const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); meta+=(config.metas[key]!=null?Number(config.metas[key]):Number(config.metaPadrao)||0); d.setMonth(d.getMonth()+1); g++; } return meta; }
+function renderConfig(){ const mp=document.getElementById('cfg-meta-padrao'); if(mp) mp.value=config.metaPadrao||''; const sm=document.getElementById('cfg-mes'); if(sm&&sm.children.length===0){ let o='<option value="">Mês</option>'; MESES.forEach((m,i)=>o+='<option value="'+i+'">'+m+'</option>'); sm.innerHTML=o; } const sa=document.getElementById('cfg-ano'); if(sa&&sa.children.length===0){ const y=new Date().getFullYear(); let o='<option value="">Ano</option>'; for(var k=y+1;k>=y-3;k--) o+='<option value="'+k+'">'+k+'</option>'; sa.innerHTML=o; } pintarMetasLista(); }
+function pintarMetasLista(){ const el=document.getElementById('cfg-metas-lista'); if(!el) return; const keys=Object.keys(config.metas||{}).sort(); if(!keys.length){ el.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0;">Nenhuma meta específica — usando a padrão.</div>'; return; } el.innerHTML=keys.map(k=>{ const pp=k.split('-'); const lbl=MESES[+pp[1]-1]+'/'+pp[0]; return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="font-size:14px;">'+lbl+'</span><span style="display:flex;align-items:center;gap:12px;"><b>'+fmtKg(config.metas[k])+' kg</b><button onclick="removerMetaMes(\''+k+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;">×</button></span></div>'; }).join(''); }
+window.addMetaMes=function(){ const mes=document.getElementById('cfg-mes').value, ano=document.getElementById('cfg-ano').value, kg=parseFloat(document.getElementById('cfg-meta-mes').value); const st=document.getElementById('cfg-status'); if(mes===''||ano===''||!kg){ if(st)st.textContent='Preencha mês, ano e kg.'; return; } config.metas[ano+'-'+String(+mes+1).padStart(2,'0')]=kg; document.getElementById('cfg-meta-mes').value=''; pintarMetasLista(); salvarConfig(); };
+window.removerMetaMes=function(k){ delete config.metas[k]; pintarMetasLista(); salvarConfig(); };
+window.salvarConfig=function(){ const mp=parseFloat(document.getElementById('cfg-meta-padrao').value); if(!isNaN(mp)) config.metaPadrao=mp; const st=document.getElementById('cfg-status'); if(st)st.textContent='Salvando…'; setDoc(doc(dbC,'configGestao','app'),{metaPadrao:config.metaPadrao,metas:config.metas}).then(()=>{ if(st)st.textContent='✓ Salvo'; }).catch(e=>{ if(st)st.textContent='Erro ao salvar: '+(e.code||e.message); }); render(); };
 function quebraKg(r){ if(!r.quebra) return 0; return (r.quebra.difMassa||0)+(r.quebra.difR1||0)+(r.quebra.difR2||0); }
 function mediaFuncionarios(setorKey, pred){ const arr=presencas.filter(x=>x.setor_key===setorKey && pred(parseBR(x.data))); if(!arr.length) return 0; return arr.reduce((a,x)=>a+(Number(x.presentes)||0),0)/arr.length; }
 function renderMeta(realizado, meta){ const pct=meta>0?Math.round(realizado/meta*100):0; const w=Math.min(100,pct); const cor=pct>=100?'#16b364':(pct>=70?'#1f9d6b':'#f5b013');
@@ -559,7 +591,7 @@ function render(){
       kpiCard('Kg produzidos', fmtKg(sum(reg,kgReg)), '⚖️','#f5b013')+
       kpiCard('Produtos distintos', new Set(reg.map(x=>x.produto)).size, '🍰','#3b6ef5')+
       kpiCard('Registros hoje', registros.filter(x=>x.origem!=='quadra'&&x.data===hojeStr).length, '📅','#8b5cf6');
-    document.getElementById('cf-meta').innerHTML=renderMetaGauge(sum(reg,kgReg), META_CONF_KG);
+    document.getElementById('cf-meta').innerHTML=renderMetaGauge(sum(reg,kgReg), metaDoPeriodo());
     const _kgProd=sum(reg,kgReg), _quebra=sum(reg,quebraKg), _pctQ=_kgProd>0?(_quebra/_kgProd*100):0;
     document.getElementById('cf-quebra').innerHTML='<div style="font-size:32px;font-weight:800;color:#ef4444;margin:6px 0;">'+_pctQ.toFixed(1).replace('.',',')+'% <span style="font-size:14px;color:var(--muted);font-weight:600;">('+fmtKg(_quebra)+' kg)</span></div><div style="font-size:12px;color:var(--muted);">sobre o kg produzido · massa + recheio (real − esperado)</div>';
     const media=mediaFuncionarios('conf',noP);
@@ -582,12 +614,13 @@ function render(){
     document.getElementById('em-table').innerHTML=tabelaReg(regP,'emb');
   }
 
+  if(pagina==='config') pintarMetasLista();
   const fmt=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
   document.getElementById('pg-sub').textContent = periodo==='tudo' ? 'Todo o período' : (fmt(r.de)+' – '+fmt(r.ate));
 }
 
 // NAV
-const TITLES={overview:['Visão Geral','Consolidado'],comodato:['Manutenção Comodato','Equipamentos'],predial:['Manutenção Predial','Chamados'],panificacao:['Panificação','Produção · quadra'],confeitaria:['Confeitaria','Produção'],embalacao:['Embalação','Produção · embalagem']};
+const TITLES={overview:['Visão Geral','Consolidado'],comodato:['Manutenção Comodato','Equipamentos'],predial:['Manutenção Predial','Chamados'],panificacao:['Panificação','Produção · quadra'],confeitaria:['Confeitaria','Produção'],embalacao:['Embalação','Produção · embalagem'],config:['Configurações','Ajustes do painel']};
 window.nav=function(p){
   pagina=p;
   if(['panificacao','confeitaria','embalacao'].indexOf(p)>=0){ const s=document.getElementById('prod-sub'); if(s){ s.style.display='block'; document.getElementById('prod-chevron').textContent='▾'; } }
@@ -596,6 +629,7 @@ window.nav=function(p){
   document.getElementById('page-'+p).classList.add('active');
   document.getElementById('pg-title').firstChild.textContent=TITLES[p][0];
   document.getElementById('pg-sub').textContent=TITLES[p][1];
+  if(p==='config') renderConfig();
   closeSidebar();
   render();
 };
@@ -633,6 +667,7 @@ function liberar(d){
   const nome=d.nome||sessaoEmail; document.getElementById('uname').textContent=nome;
   document.getElementById('uavatar').textContent=(nome||'?').trim().charAt(0).toUpperCase();
   if(!subE){ subE=onSnapshot(collection(dbC,'equipamentosEstoque'), s=>{ estoque=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.error('estoque:',e)); }
+  if(!subCfg){ subCfg=onSnapshot(doc(dbC,'configGestao','app'), snap=>{ if(snap.exists()){ const dd=snap.data(); if(dd.metaPadrao!=null) config.metaPadrao=dd.metaPadrao; config.metas=dd.metas||{}; } render(); }, e=>console.warn('config:',e.code||e.message)); }
   if(!subR){ subR=onSnapshot(collection(dbProd,'registros'), s=>{ registros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('registros (produção):',e.code||e.message)); }
   if(!subCat){ subCat=onSnapshot(collection(dbProd,'produtosConfeitaria'), s=>{ prodCatalog={}; s.docs.forEach(x=>{const dd=x.data(); if(dd.cod!=null&&dd.cod!=='') prodCatalog['c:'+dd.cod]=dd.pesoPct||0; if(dd.nome) prodCatalog['n:'+dd.nome]=dd.pesoPct||0;}); render(); }, e=>console.warn('produtosConfeitaria:',e.code||e.message)); }
   if(!subPres){ subPres=onSnapshot(collection(dbProd,'presencas'), s=>{ presencas=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('presencas:',e.code||e.message)); }
