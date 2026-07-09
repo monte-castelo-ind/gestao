@@ -325,8 +325,8 @@ const appProd = initializeApp(configProducao, 'producao');
 const dbProd = getFirestore(appProd);
 
 let periodo='30d', pagina='overview';
-let estoque=[], chamados=[], registros=[];
-let subE=null, subC=null, subR=null;
+let estoque=[], chamados=[], registros=[], prodCatalog={};
+let subE=null, subC=null, subR=null, subCat=null;
 let sessaoEmail='', currentRole=null, currentAtivo=false;
 const CORES=['#1f9d6b','#3b6ef5','#f5b013','#12b3a6','#8b7fe8','#6bbf8f','#f08a5d','#a7c4b5'];
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -337,6 +337,10 @@ function conclusaoDe(e){ let d=parseBR(e.dataConclusao); if(d)return d; if(Array
 function range(){ let ate=new Date(); ate.setHours(23,59,59,999); let de=new Date(2000,0,1); if(periodo==='7d'){de=new Date();de.setDate(de.getDate()-6);de.setHours(0,0,0,0);} else if(periodo==='30d'){de=new Date();de.setDate(de.getDate()-29);de.setHours(0,0,0,0);} else if(periodo==='90d'){de=new Date();de.setDate(de.getDate()-89);de.setHours(0,0,0,0);} else if(periodo==='mes'){const n=new Date();de=new Date(n.getFullYear(),n.getMonth(),1,0,0,0);} return {de,ate}; }
 function tempoMedio(itens){ const t=[]; itens.forEach(e=>{const ent=parseBR(e.dataEntrada||e.dataAbertura),con=conclusaoDe(e); if(ent&&con){const d=Math.round((con-ent)/86400000); if(d>=0)t.push(d);}}); if(!t.length)return '–'; return (t.reduce((a,b)=>a+b,0)/t.length).toFixed(1).replace('.',',')+'d'; }
 function agrupar(itens,chave){ const m={}; itens.forEach(e=>{const k=e[chave]||'—'; m[k]=(m[k]||0)+1;}); return Object.keys(m).map(k=>({nome:k,val:m[k]})).sort((a,b)=>b.val-a.val); }
+function agruparSoma(itens,chave,valfn){ const m={}; itens.forEach(e=>{const k=e[chave]||'—'; m[k]=(m[k]||0)+(valfn(e)||0);}); return Object.keys(m).map(k=>({nome:k,val:Math.round(m[k])})).sort((a,b)=>b.val-a.val); }
+function pesoPctDe(r){ if(r.prodData&&r.prodData.pesoPct) return r.prodData.pesoPct; if(r.cod!=null&&prodCatalog['c:'+r.cod]) return prodCatalog['c:'+r.cod]; if(r.produto&&prodCatalog['n:'+r.produto]) return prodCatalog['n:'+r.produto]; return 0; }
+function kgReg(r){ return ((r.qtdPacotes||r.qtd||0)*pesoPctDe(r))/1000; }
+function fmtKg(v){ return (v||0).toLocaleString('pt-BR',{maximumFractionDigits: v>=100?0:1}); }
 
 function kpiCard(label,num,ico,tint,foot){
   return '<div class="card"><div class="kpi-top"><div class="kpi-label">'+label+'</div><div class="kpi-ico" style="background:'+tint+'22;color:'+tint+';">'+ico+'</div></div>'+
@@ -433,11 +437,12 @@ function tabelaReg(list, modo){
       const q=feito?(r.embalagem.qtdEmbalada||0):unReg(r);
       return '<tr style="--row:'+cor+'12;"><td>'+esc(r.produto||'—')+'</td><td>'+q+'</td><td><span class="pill" style="background:'+cor+'22;color:'+cor+';">'+(feito?'Embalado':'Pendente')+'</span></td><td>'+esc(r.data||'—')+'</td></tr>';
     }
-    return '<tr><td>'+esc(r.produto||'—')+'</td><td>'+pctReg(r)+' pct</td><td>'+esc(r.data||'—')+'</td></tr>';
+    const qcol = modo==='kg' ? (fmtKg(kgReg(r))+' kg') : (pctReg(r)+' pct');
+    return '<tr><td>'+esc(r.produto||'—')+'</td><td>'+qcol+'</td><td>'+esc(r.data||'—')+'</td></tr>';
   }).join('');
   const head = modo==='emb'
     ? '<tr><th>Produto</th><th>Embalado</th><th>Status</th><th style="text-align:right;">Data</th></tr>'
-    : '<tr><th>Produto</th><th>Pacotes</th><th style="text-align:right;">Data</th></tr>';
+    : '<tr><th>Produto</th><th>'+(modo==='kg'?'Kg':'Pacotes')+'</th><th style="text-align:right;">Data</th></tr>';
   return '<div style="overflow-x:auto;"><table><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>';
 }
 
@@ -517,12 +522,12 @@ function render(){
     const reg=registros.filter(x=>x.origem!=='quadra'&&noP(parseBR(x.data)));
     document.getElementById('cf-kpis').innerHTML=
       kpiCard('Registros no período', reg.length, '📋','#1f9d6b')+
-      kpiCard('Pacotes produzidos', sum(reg,pctReg), '🧁','#f5b013')+
+      kpiCard('Kg produzidos', fmtKg(sum(reg,kgReg)), '⚖️','#f5b013')+
       kpiCard('Produtos distintos', new Set(reg.map(x=>x.produto)).size, '🍰','#3b6ef5')+
       kpiCard('Registros hoje', registros.filter(x=>x.origem!=='quadra'&&x.data===hojeStr).length, '📅','#8b5cf6');
     document.getElementById('cf-bars').innerHTML=monthBars(registros.filter(x=>x.origem!=='quadra'), x=>parseBR(x.data), '#3b6ef5');
-    document.getElementById('cf-prod').innerHTML=barsHTML(agrupar(reg,'produto').slice(0,8),'Sem registros no período.');
-    document.getElementById('cf-table').innerHTML=tabelaReg(reg);
+    document.getElementById('cf-prod').innerHTML=barsHTML(agruparSoma(reg,'produto',kgReg).slice(0,8),'Sem registros no período.',' kg');
+    document.getElementById('cf-table').innerHTML=tabelaReg(reg,'kg');
   }
   if(pagina==='embalacao'){
     const regP=registros.filter(x=>noP(parseBR(x.data)));
@@ -588,6 +593,7 @@ function liberar(d){
   document.getElementById('uavatar').textContent=(nome||'?').trim().charAt(0).toUpperCase();
   if(!subE){ subE=onSnapshot(collection(dbC,'equipamentosEstoque'), s=>{ estoque=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.error('estoque:',e)); }
   if(!subR){ subR=onSnapshot(collection(dbProd,'registros'), s=>{ registros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('registros (produção):',e.code||e.message)); }
+  if(!subCat){ subCat=onSnapshot(collection(dbProd,'produtosConfeitaria'), s=>{ prodCatalog={}; s.docs.forEach(x=>{const dd=x.data(); if(dd.cod!=null&&dd.cod!=='') prodCatalog['c:'+dd.cod]=dd.pesoPct||0; if(dd.nome) prodCatalog['n:'+dd.nome]=dd.pesoPct||0;}); render(); }, e=>console.warn('produtosConfeitaria:',e.code||e.message)); }
   render();
 }
 
