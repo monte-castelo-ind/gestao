@@ -141,6 +141,7 @@
   .chevron { margin-left:auto; font-size:10px; color:var(--muted); }
   .nav-sub { margin:2px 0 4px 14px; padding-left:6px; border-left:1.5px solid var(--border); }
   .nav-sub .nav-item { font-size:13.5px; }
+  .chip-sel{ padding:6px 10px; font-weight:600; }
 </style>
 </head>
 <body>
@@ -208,6 +209,9 @@
       <button class="chip" data-p="90d" onclick="setPeriodo('90d')">90 dias</button>
       <button class="chip" data-p="mes" onclick="setPeriodo('mes')">Este mês</button>
       <button class="chip" data-p="tudo" onclick="setPeriodo('tudo')">Tudo</button>
+      <span style="width:1px;height:22px;background:var(--border);margin:2px 4px;"></span>
+      <select class="chip chip-sel" id="sel-mes" onchange="setMesAno()"></select>
+      <select class="chip chip-sel" id="sel-ano" onchange="setMesAno()"></select>
     </div>
 
     <!-- ===== VISÃO GERAL ===== -->
@@ -329,7 +333,7 @@ const configProducao = { apiKey:"AIzaSyDY5ma_NbCmZ2dyXUjKm6GZQ3ibhwgcdmI", authD
 const appProd = initializeApp(configProducao, 'producao');
 const dbProd = getFirestore(appProd);
 
-let periodo='30d', pagina='overview';
+let periodo='30d', pagina='overview', filtroAno='', filtroMes='';
 let estoque=[], chamados=[], registros=[], prodCatalog={}, presencas=[];
 let subE=null, subC=null, subR=null, subCat=null, subPres=null;
 let sessaoEmail='', currentRole=null, currentAtivo=false;
@@ -340,7 +344,7 @@ const META_CONF_KG = 30000; // <<< META mensal de kg da Confeitaria (ajuste aqui
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function parseBR(s){ if(!s||typeof s!=='string')return null; const p=s.split('/'); if(p.length!==3)return null; const d=+p[0],m=+p[1],y=+p[2]; if(!d||!m||!y)return null; return new Date(y,m-1,d,12,0,0); }
 function conclusaoDe(e){ let d=parseBR(e.dataConclusao); if(d)return d; if(Array.isArray(e.historico)){ for(let i=e.historico.length-1;i>=0;i--){ if(/conclu/i.test(e.historico[i].acao||'')){ const hd=parseBR(e.historico[i].data); if(hd)return hd; } } } if(e.status==='saiu'){ const ds=parseBR(e.dataSaida); if(ds)return ds; } return null; }
-function range(){ let ate=new Date(); ate.setHours(23,59,59,999); let de=new Date(2000,0,1); if(periodo==='7d'){de=new Date();de.setDate(de.getDate()-6);de.setHours(0,0,0,0);} else if(periodo==='30d'){de=new Date();de.setDate(de.getDate()-29);de.setHours(0,0,0,0);} else if(periodo==='90d'){de=new Date();de.setDate(de.getDate()-89);de.setHours(0,0,0,0);} else if(periodo==='mes'){const n=new Date();de=new Date(n.getFullYear(),n.getMonth(),1,0,0,0);} return {de,ate}; }
+function range(){ if(filtroAno!==''){ const yy=+filtroAno; if(filtroMes!==''){ const mo=+filtroMes; return {de:new Date(yy,mo,1,0,0,0), ate:new Date(yy,mo+1,0,23,59,59)}; } return {de:new Date(yy,0,1,0,0,0), ate:new Date(yy,11,31,23,59,59)}; } let ate=new Date(); ate.setHours(23,59,59,999); let de=new Date(2000,0,1); if(periodo==='7d'){de=new Date();de.setDate(de.getDate()-6);de.setHours(0,0,0,0);} else if(periodo==='30d'){de=new Date();de.setDate(de.getDate()-29);de.setHours(0,0,0,0);} else if(periodo==='90d'){de=new Date();de.setDate(de.getDate()-89);de.setHours(0,0,0,0);} else if(periodo==='mes'){const n=new Date();de=new Date(n.getFullYear(),n.getMonth(),1,0,0,0);} return {de,ate}; }
 function tempoMedio(itens){ const t=[]; itens.forEach(e=>{const ent=parseBR(e.dataEntrada||e.dataAbertura),con=conclusaoDe(e); if(ent&&con){const d=Math.round((con-ent)/86400000); if(d>=0)t.push(d);}}); if(!t.length)return '–'; return (t.reduce((a,b)=>a+b,0)/t.length).toFixed(1).replace('.',',')+'d'; }
 function agrupar(itens,chave){ const m={}; itens.forEach(e=>{const k=e[chave]||'—'; m[k]=(m[k]||0)+1;}); return Object.keys(m).map(k=>({nome:k,val:m[k]})).sort((a,b)=>b.val-a.val); }
 function agruparSoma(itens,chave,valfn){ const m={}; itens.forEach(e=>{const k=e[chave]||'—'; m[k]=(m[k]||0)+(valfn(e)||0);}); return Object.keys(m).map(k=>({nome:k,val:Math.round(m[k])})).sort((a,b)=>b.val-a.val); }
@@ -353,14 +357,24 @@ function renderMeta(realizado, meta){ const pct=meta>0?Math.round(realizado/meta
   return '<div style="display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 10px;"><div><div style="font-size:26px;font-weight:800;">'+fmtKg(realizado)+'</div><div style="font-size:12px;color:var(--muted);">realizado (kg)</div></div><div style="text-align:right;"><div style="font-size:15px;font-weight:700;color:var(--muted);">/ '+fmtKg(meta)+'</div><div style="font-size:12px;color:var(--muted);">meta (kg)</div></div></div>'+
   '<div class="bar-track" style="height:12px;"><div class="bar-fill" style="width:'+w+'%;background:'+cor+';"></div></div>'+
   '<div style="text-align:center;margin-top:8px;font-size:20px;font-weight:800;color:'+cor+';">'+pct+'%</div>'; }
-function monthBarsSum(itens,dateFn,valFn,cor){ const now=new Date(),bk=[]; for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); bk.push({y:d.getFullYear(),m:d.getMonth(),val:0}); }
+function renderMetaGauge(realizado, meta){ var pctRaw=meta>0?realizado/meta*100:0, f=Math.max(0,Math.min(1,pctRaw/100)), R=80, C=Math.PI*R, cor=pctRaw>=100?'#16b364':'#f5851f', path='M 20 100 A 80 80 0 0 1 180 100';
+  return '<div style="display:flex;justify-content:center;margin:2px 0;"><svg viewBox="0 0 200 128" width="100%" style="max-width:300px;">'+
+    '<path d="'+path+'" fill="none" stroke="var(--track)" stroke-width="18" stroke-linecap="round"></path>'+
+    '<path d="'+path+'" fill="none" stroke="'+cor+'" stroke-width="18" stroke-linecap="round" stroke-dasharray="'+(f*C).toFixed(2)+' '+(C*2).toFixed(2)+'"></path>'+
+    '<text x="100" y="94" text-anchor="middle" style="fill:'+cor+';font:800 30px Inter;">'+pctRaw.toFixed(1).replace('.',',')+'%</text>'+
+    '<text x="20" y="122" text-anchor="middle" style="fill:var(--muted);font:500 11px Inter;">0</text>'+
+    '<text x="180" y="122" text-anchor="middle" style="fill:var(--muted);font:500 11px Inter;">100</text></svg></div>'+
+    '<div style="text-align:center;font-size:12px;color:var(--muted);margin-top:-4px;">'+fmtKg(realizado)+' de '+fmtKg(meta)+' kg</div>'; }
+function monthBarsSum(itens,dateFn,valFn,cor,withLine){ const now=new Date(),bk=[]; for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); bk.push({y:d.getFullYear(),m:d.getMonth(),val:0}); }
   itens.forEach(e=>{ const dt=dateFn(e); if(!dt)return; for(const b of bk){ if(dt.getFullYear()===b.y&&dt.getMonth()===b.m){ b.val+=(valFn(e)||0); break; } } });
-  const max=Math.max(1,...bk.map(b=>b.val)); const W=340,H=170,padB=28,padT=16,bw=30,gap=(W-bw*6)/7; let bars='';
-  bk.forEach((b,i)=>{ const x=gap+i*(bw+gap); const hh=(H-padB-padT)*(b.val/max); const y=H-padB-hh;
+  const max=Math.max(1,...bk.map(b=>b.val)); const W=340,H=170,padB=28,padT=16,bw=30,gap=(W-bw*6)/7; let bars=''; const pts=[];
+  bk.forEach((b,i)=>{ const x=gap+i*(bw+gap); const hh=(H-padB-padT)*(b.val/max); const y=H-padB-hh; pts.push([x+bw/2,y]);
     bars+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw+'" height="'+Math.max(2,hh).toFixed(1)+'" rx="6" fill="'+cor+'"></rect>';
     if(b.val>0) bars+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(y-6).toFixed(1)+'" text-anchor="middle" style="fill:var(--text);font:600 10px Inter;">'+fmtKg(b.val)+'</text>';
     bars+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-9)+'" text-anchor="middle" style="fill:var(--muted);font:500 11px Inter;">'+MESES[b.m]+'</text>'; });
-  return '<div style="margin-top:8px;"><svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-height:190px;">'+bars+'</svg></div>'; }
+  let line='';
+  if(withLine){ const poly=pts.map(pp=>pp[0].toFixed(1)+','+pp[1].toFixed(1)).join(' '); line='<polyline points="'+poly+'" fill="none" stroke="#1f8a5f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>'+pts.map(pp=>'<circle cx="'+pp[0].toFixed(1)+'" cy="'+pp[1].toFixed(1)+'" r="3.2" fill="#1f8a5f"></circle>').join(''); }
+  return '<div style="margin-top:8px;"><svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-height:190px;">'+bars+line+'</svg></div>'; }
 
 function kpiCard(label,num,ico,tint,foot){
   return '<div class="card"><div class="kpi-top"><div class="kpi-label">'+label+'</div><div class="kpi-ico" style="background:'+tint+'22;color:'+tint+';">'+ico+'</div></div>'+
@@ -468,7 +482,7 @@ function tabelaReg(list, modo){
 
 function render(){
   const r=range();
-  document.querySelectorAll('#chips .chip').forEach(c=>c.classList.toggle('active',c.dataset.p===periodo));
+  document.querySelectorAll('#chips button.chip').forEach(c=>c.classList.toggle('active',filtroAno===''&&c.dataset.p===periodo));
   const noP=dt=>dt&&dt>=r.de&&dt<=r.ate;
 
   const cRef=estoque.filter(e=>noP(conclusaoDe(e)));
@@ -541,16 +555,16 @@ function render(){
   if(pagina==='confeitaria'){
     const reg=registros.filter(x=>x.origem!=='quadra'&&noP(parseBR(x.data)));
     document.getElementById('cf-kpis').innerHTML=
-      kpiCard('Pcts produzidos', sum(reg,pctReg), '📦','#1f9d6b')+
+      kpiCard('Pcts produzidos', sum(reg,pctReg).toLocaleString('pt-BR'), '📦','#1f9d6b')+
       kpiCard('Kg produzidos', fmtKg(sum(reg,kgReg)), '⚖️','#f5b013')+
       kpiCard('Produtos distintos', new Set(reg.map(x=>x.produto)).size, '🍰','#3b6ef5')+
       kpiCard('Registros hoje', registros.filter(x=>x.origem!=='quadra'&&x.data===hojeStr).length, '📅','#8b5cf6');
-    document.getElementById('cf-meta').innerHTML=renderMeta(sum(reg,kgReg), META_CONF_KG);
+    document.getElementById('cf-meta').innerHTML=renderMetaGauge(sum(reg,kgReg), META_CONF_KG);
     const _kgProd=sum(reg,kgReg), _quebra=sum(reg,quebraKg), _pctQ=_kgProd>0?(_quebra/_kgProd*100):0;
     document.getElementById('cf-quebra').innerHTML='<div style="font-size:32px;font-weight:800;color:#ef4444;margin:6px 0;">'+_pctQ.toFixed(1).replace('.',',')+'% <span style="font-size:14px;color:var(--muted);font-weight:600;">('+fmtKg(_quebra)+' kg)</span></div><div style="font-size:12px;color:var(--muted);">sobre o kg produzido · massa + recheio (real − esperado)</div>';
     const media=mediaFuncionarios('conf',noP);
     document.getElementById('cf-func').innerHTML='<div style="font-size:32px;font-weight:800;color:#3b6ef5;margin:6px 0;">'+(media?media.toFixed(1).replace('.',','):'–')+'</div><div style="font-size:12px;color:var(--muted);">média de presentes/dia no período</div>';
-    document.getElementById('cf-bars').innerHTML=monthBarsSum(registros.filter(x=>x.origem!=='quadra'), x=>parseBR(x.data), kgReg, '#3b6ef5');
+    document.getElementById('cf-bars').innerHTML=monthBarsSum(registros.filter(x=>x.origem!=='quadra'), x=>parseBR(x.data), kgReg, '#3b6ef5', true);
     document.getElementById('cf-prod').innerHTML=barsHTML(agruparSoma(reg,'produto',kgReg).slice(0,8),'Sem registros no período.',' kg');
     document.getElementById('cf-table').innerHTML=tabelaReg(reg,'kg');
   }
@@ -586,7 +600,9 @@ window.nav=function(p){
   render();
 };
 window.toggleProducao=function(){ const s=document.getElementById('prod-sub'); const open=s.style.display!=='none'; s.style.display=open?'none':'block'; document.getElementById('prod-chevron').textContent=open?'▸':'▾'; };
-window.setPeriodo=function(p){ periodo=p; render(); };
+window.setPeriodo=function(p){ periodo=p; filtroAno=''; filtroMes=''; var sa=document.getElementById('sel-ano'),sm=document.getElementById('sel-mes'); if(sa)sa.value=''; if(sm)sm.value=''; render(); };
+window.setMesAno=function(){ filtroAno=document.getElementById('sel-ano').value; filtroMes=document.getElementById('sel-mes').value; render(); };
+(function(){ var sa=document.getElementById('sel-ano'); if(sa){ var y=new Date().getFullYear(),o='<option value="">Ano…</option>'; for(var k=y;k>=y-3;k--) o+='<option value="'+k+'">'+k+'</option>'; sa.innerHTML=o; } var sm=document.getElementById('sel-mes'); if(sm){ var o2='<option value="">Ano todo</option>'; MESES.forEach(function(mm,ii){o2+='<option value="'+ii+'">'+mm+'</option>';}); sm.innerHTML=o2; } })();
 window.openSidebar=function(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('backdrop').classList.add('show'); };
 window.closeSidebar=function(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('backdrop').classList.remove('show'); };
 window.toggleTheme=function(){
