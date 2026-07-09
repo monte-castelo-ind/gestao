@@ -423,6 +423,7 @@ function tabelaPredial(){
 }
 
 function unReg(r){ return r.qtdUnidades||r.qtd||0; }
+function pctReg(r){ return r.qtdPacotes||r.qtd||0; }
 function tabelaReg(list, modo){
   const rows=[...list].sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).slice(0,8);
   if(!rows.length) return '<div class="empty">Nenhum registro no período.</div>';
@@ -432,11 +433,11 @@ function tabelaReg(list, modo){
       const q=feito?(r.embalagem.qtdEmbalada||0):unReg(r);
       return '<tr style="--row:'+cor+'12;"><td>'+esc(r.produto||'—')+'</td><td>'+q+'</td><td><span class="pill" style="background:'+cor+'22;color:'+cor+';">'+(feito?'Embalado':'Pendente')+'</span></td><td>'+esc(r.data||'—')+'</td></tr>';
     }
-    return '<tr><td>'+esc(r.produto||'—')+'</td><td>'+unReg(r)+'</td><td>'+esc(r.data||'—')+'</td></tr>';
+    return '<tr><td>'+esc(r.produto||'—')+'</td><td>'+pctReg(r)+' pct</td><td>'+esc(r.data||'—')+'</td></tr>';
   }).join('');
   const head = modo==='emb'
     ? '<tr><th>Produto</th><th>Embalado</th><th>Status</th><th style="text-align:right;">Data</th></tr>'
-    : '<tr><th>Produto</th><th>Unidades</th><th style="text-align:right;">Data</th></tr>';
+    : '<tr><th>Produto</th><th>Pacotes</th><th style="text-align:right;">Data</th></tr>';
   return '<div style="overflow-x:auto;"><table><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>';
 }
 
@@ -506,7 +507,7 @@ function render(){
     document.getElementById('pa-kpis').innerHTML=
       kpiCard('Registros no período', reg.length, '📋','#1f9d6b')+
       kpiCard('Pacotes produzidos', sum(reg,x=>x.qtdPacotes||x.qtd), '🥖','#3b6ef5')+
-      kpiCard('Unidades produzidas', sum(reg,unReg), '🍞','#f5b013')+
+      kpiCard('Produtos distintos', new Set(reg.map(x=>x.produto)).size, '🍞','#f5b013')+
       kpiCard('Registros hoje', registros.filter(x=>x.origem==='quadra'&&x.data===hojeStr).length, '📅','#8b5cf6');
     document.getElementById('pa-bars').innerHTML=monthBars(registros.filter(x=>x.origem==='quadra'), x=>parseBR(x.data), '#1f9d6b');
     document.getElementById('pa-prod').innerHTML=barsHTML(agrupar(reg,'produto').slice(0,8),'Sem registros no período.');
@@ -516,7 +517,7 @@ function render(){
     const reg=registros.filter(x=>x.origem!=='quadra'&&noP(parseBR(x.data)));
     document.getElementById('cf-kpis').innerHTML=
       kpiCard('Registros no período', reg.length, '📋','#1f9d6b')+
-      kpiCard('Unidades produzidas', sum(reg,unReg), '🧁','#f5b013')+
+      kpiCard('Pacotes produzidos', sum(reg,pctReg), '🧁','#f5b013')+
       kpiCard('Produtos distintos', new Set(reg.map(x=>x.produto)).size, '🍰','#3b6ef5')+
       kpiCard('Registros hoje', registros.filter(x=>x.origem!=='quadra'&&x.data===hojeStr).length, '📅','#8b5cf6');
     document.getElementById('cf-bars').innerHTML=monthBars(registros.filter(x=>x.origem!=='quadra'), x=>parseBR(x.data), '#3b6ef5');
