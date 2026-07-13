@@ -187,6 +187,7 @@
       <button class="nav-item" data-page="confeitaria" onclick="nav('confeitaria')"><span class="ico">🥐</span> Confeitaria</button>
       <button class="nav-item" data-page="embalacao" onclick="nav('embalacao')"><span class="ico">📦</span> Embalação</button>
     </div>
+    <button class="nav-item" data-page="comercial" onclick="nav('comercial')"><span class="ico">💰</span> Comercial</button>
     <div class="sidebar-foot">
       <button class="nav-item" data-page="config" onclick="nav('config')"><span class="ico">⚙️</span> Configurações</button>
       <button class="nav-item" onclick="toggleTheme()"><span class="ico" id="theme-ico">🌙</span> <span id="theme-txt">Tema escuro</span></button>
@@ -348,6 +349,20 @@
         </div>
       </div>
     </div>
+    <div class="page" id="page-comercial">
+      <div class="content">
+        <div class="grid cols-4" id="cm-kpis"></div>
+        <div class="card" style="margin-top:16px;"><div class="card-title">Faturamento por mês</div><div class="card-sub">Últimos 6 meses</div><div id="cm-mes"></div></div>
+        <div class="grid cols-2" style="margin-top:16px;">
+          <div class="card"><div class="card-title">Top clientes</div><div class="card-sub">No período · por faturamento</div><div id="cm-clientes"></div></div>
+          <div class="card"><div class="card-title">Top produtos</div><div class="card-sub">No período · por faturamento</div><div id="cm-produtos"></div></div>
+        </div>
+        <div class="grid cols-2" style="margin-top:16px;">
+          <div class="card"><div class="card-title">Por vendedor</div><div class="card-sub">No período</div><div id="cm-vendedores"></div></div>
+          <div class="card"><div class="card-title">Por região/rota</div><div class="card-sub">No período</div><div id="cm-regioes"></div></div>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -370,8 +385,8 @@ const appProd = initializeApp(configProducao, 'producao');
 const dbProd = getFirestore(appProd);
 
 let periodo='30d', pagina='overview', filtroAno='', filtroMes='';
-let estoque=[], chamados=[], registros=[], prodCatalog={}, presencas=[], quadraRegistros=[];
-let subE=null, subC=null, subR=null, subCat=null, subPres=null, subCfg=null, subQuad=null;
+let estoque=[], chamados=[], registros=[], prodCatalog={}, presencas=[], quadraRegistros=[], comercialMensal=[], comercialDiario=[];
+let subE=null, subC=null, subR=null, subCat=null, subPres=null, subCfg=null, subQuad=null, subCM=null, subCD=null;
 let sessaoEmail='', currentRole=null, currentAtivo=false;
 const CORES=['#1f9d6b','#3b6ef5','#f5b013','#12b3a6','#8b7fe8','#6bbf8f','#f08a5d','#a7c4b5'];
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -388,6 +403,12 @@ function agruparSoma(itens,chave,valfn){ const m={}; itens.forEach(e=>{const k=e
 function pesoPctDe(r){ if(r.prodData&&r.prodData.pesoPct) return r.prodData.pesoPct; if(r.cod!=null&&prodCatalog['c:'+r.cod]) return prodCatalog['c:'+r.cod]; if(r.produto&&prodCatalog['n:'+r.produto]) return prodCatalog['n:'+r.produto]; return 0; }
 function kgReg(r){ const pct=r.qtdPacotes||r.qtd||0; if(r.prodData && r.prodData.kgPacote!=null && !r.prodData.pesoPct) return pct*r.prodData.kgPacote; return pct*pesoPctDe(r)/1000; }
 function fmtKg(v){ return (v||0).toLocaleString('pt-BR',{maximumFractionDigits: v>=100?0:1}); }
+function fmtMoney(v){ return 'R$ ' + Math.round(v||0).toLocaleString('pt-BR'); }
+function mesData(ym){ return new Date(+ym.slice(0,4), +ym.slice(5,7)-1, 1); }
+function diaData(ymd){ return new Date(+ymd.slice(0,4), +ymd.slice(5,7)-1, +ymd.slice(8,10), 12,0,0); }
+function mergeMapa(alvo, src){ if(!src) return; for(const k in src){ alvo[k]=(alvo[k]||0)+src[k]; } }
+function mapaParaArr(m, n){ return Object.keys(m).map(k=>({nome:k,val:m[k]})).sort((a,b)=>b.val-a.val).slice(0, n||8); }
+function barsMoneyHTML(itens,vazio){ if(!itens.length){ return '<div class="empty">'+(vazio||'Sem dados no período.')+'</div>'; } const max=itens[0].val||1; return itens.map((it,i)=>{ const cor=CORES[i%CORES.length],w=Math.round(it.val/max*100); return '<div class="bar-row"><div class="bar-head"><span class="legend-name">'+esc(it.nome)+'</span><span class="legend-val">'+fmtMoney(it.val)+'</span></div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;background:'+cor+';"></div></div></div>'; }).join(''); }
 function metaDoPeriodo(setor){ const c=config[setor]||config.conf; const r=range(); let d=new Date(r.de.getFullYear(),r.de.getMonth(),1); const end=new Date(r.ate.getFullYear(),r.ate.getMonth(),1); let meta=0,g=0; while(d<=end&&g<120){ const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); meta+=(c.metas[key]!=null?Number(c.metas[key]):Number(c.metaPadrao)||0); d.setMonth(d.getMonth()+1); g++; } return meta; }
 function renderConfig(){ const c=config[cfgSetor]; document.querySelectorAll('.cfg-setor').forEach(b=>b.classList.toggle('active',b.dataset.s===cfgSetor)); const tt=document.getElementById('cfg-setor-nome'); if(tt) tt.textContent=({conf:'Confeitaria',panif:'Panificação',emb:'Embalação'})[cfgSetor]||'Confeitaria'; const mp=document.getElementById('cfg-meta-padrao'); if(mp) mp.value=c.metaPadrao||''; const sm=document.getElementById('cfg-mes'); if(sm&&sm.children.length===0){ let o='<option value="">Mês</option>'; MESES.forEach((m,i)=>o+='<option value="'+i+'">'+m+'</option>'); sm.innerHTML=o; } const sa=document.getElementById('cfg-ano'); if(sa&&sa.children.length===0){ const y=new Date().getFullYear(); let o='<option value="">Ano</option>'; for(var k=y+1;k>=y-3;k--) o+='<option value="'+k+'">'+k+'</option>'; sa.innerHTML=o; } pintarMetasLista(); }
 function pintarMetasLista(){ const el=document.getElementById('cfg-metas-lista'); if(!el) return; const metas=config[cfgSetor].metas||{}; const keys=Object.keys(metas).sort(); if(!keys.length){ el.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0;">Nenhuma meta específica — usando a padrão.</div>'; return; } el.innerHTML=keys.map(k=>{ const pp=k.split('-'); const lbl=MESES[+pp[1]-1]+'/'+pp[0]; return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="font-size:14px;">'+lbl+'</span><span style="display:flex;align-items:center;gap:12px;"><b>'+fmtKg(metas[k])+' kg</b><button onclick="removerMetaMes(\''+k+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;">×</button></span></div>'; }).join(''); }
@@ -637,12 +658,33 @@ function render(){
   }
 
   if(pagina==='config') pintarMetasLista();
+  if(pagina==='comercial'){
+    const rr=range();
+    const usarMensal=(periodo==='tudo')||(filtroAno!=='');
+    let docs;
+    if(usarMensal){ docs=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=rr.de && ini<=rr.ate; }); }
+    else { docs=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=rr.de && dt<=rr.ate; }); }
+    const fat=docs.reduce((a,d)=>a+(d.faturamento||0),0);
+    const reg=docs.reduce((a,d)=>a+(d.registros||0),0);
+    const mC={},mP={},mR={},mV={};
+    docs.forEach(d=>{ mergeMapa(mC,d.clientes); mergeMapa(mP,d.produtos); mergeMapa(mR,d.regioes); mergeMapa(mV,d.vendedores); });
+    document.getElementById('cm-kpis').innerHTML=
+      kpiCard('Faturamento', fmtMoney(fat), '💰','#1f9d6b')+
+      kpiCard('Nº de registros', reg.toLocaleString('pt-BR'), '🧾','#3b6ef5')+
+      kpiCard('Ticket médio', fmtMoney(reg?fat/reg:0), '🎯','#f5b013')+
+      kpiCard('Clientes distintos', Object.keys(mC).length.toLocaleString('pt-BR'), '👥','#8b5cf6');
+    document.getElementById('cm-mes').innerHTML=monthBarsSum(comercialMensal.map(d=>({dt:mesData(d.periodo),fat:d.faturamento})), x=>x.dt, x=>x.fat, '#1f9d6b', true);
+    document.getElementById('cm-clientes').innerHTML=barsMoneyHTML(mapaParaArr(mC,8));
+    document.getElementById('cm-produtos').innerHTML=barsMoneyHTML(mapaParaArr(mP,8));
+    document.getElementById('cm-vendedores').innerHTML=barsMoneyHTML(mapaParaArr(mV,8));
+    document.getElementById('cm-regioes').innerHTML=barsMoneyHTML(mapaParaArr(mR,8));
+  }
   const fmt=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
   document.getElementById('pg-sub').textContent = periodo==='tudo' ? 'Todo o período' : (fmt(r.de)+' – '+fmt(r.ate));
 }
 
 // NAV
-const TITLES={overview:['Visão Geral','Consolidado'],comodato:['Manutenção Comodato','Equipamentos'],predial:['Manutenção Predial','Chamados'],panificacao:['Panificação','Produção · quadra'],confeitaria:['Confeitaria','Produção'],embalacao:['Embalação','Produção · embalagem'],config:['Configurações','Ajustes do painel']};
+const TITLES={overview:['Visão Geral','Consolidado'],comodato:['Manutenção Comodato','Equipamentos'],predial:['Manutenção Predial','Chamados'],panificacao:['Panificação','Produção · quadra'],confeitaria:['Confeitaria','Produção'],embalacao:['Embalação','Produção · embalagem'],config:['Configurações','Ajustes do painel'],comercial:['Comercial','Faturamento (ERP)']};
 window.nav=function(p){
   pagina=p;
   if(['panificacao','confeitaria','embalacao'].indexOf(p)>=0){ const s=document.getElementById('prod-sub'); if(s){ s.style.display='block'; document.getElementById('prod-chevron').textContent='▾'; } }
@@ -689,6 +731,8 @@ function liberar(d){
   const nome=d.nome||sessaoEmail; document.getElementById('uname').textContent=nome;
   document.getElementById('uavatar').textContent=(nome||'?').trim().charAt(0).toUpperCase();
   if(!subE){ subE=onSnapshot(collection(dbC,'equipamentosEstoque'), s=>{ estoque=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.error('estoque:',e)); }
+  if(!subCM){ subCM=onSnapshot(collection(dbC,'comercialMensal'), s=>{ comercialMensal=s.docs.map(x=>x.data()); render(); }, e=>console.warn('comercialMensal:',e.code||e.message)); }
+  if(!subCD){ subCD=onSnapshot(collection(dbC,'comercialDiario'), s=>{ comercialDiario=s.docs.map(x=>x.data()); render(); }, e=>console.warn('comercialDiario:',e.code||e.message)); }
   if(!subCfg){ subCfg=onSnapshot(doc(dbC,'configGestao','app'), snap=>{ if(snap.exists()){ const dd=snap.data(); if(dd.conf||dd.panif||dd.emb){ if(dd.conf) config.conf=dd.conf; if(dd.panif) config.panif=dd.panif; if(dd.emb) config.emb=dd.emb; } else { config.conf={metaPadrao:dd.metaPadrao!=null?dd.metaPadrao:META_CONF_KG, metas:dd.metas||{}}; } } render(); }, e=>console.warn('config:',e.code||e.message)); }
   if(!subR){ subR=onSnapshot(collection(dbProd,'registros'), s=>{ registros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('registros (produção):',e.code||e.message)); }
   if(!subQuad){ subQuad=onSnapshot(collection(dbProd,'quadraRegistros'), s=>{ quadraRegistros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('quadraRegistros:',e.code||e.message)); }
