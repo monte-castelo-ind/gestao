@@ -221,6 +221,7 @@
       <div class="content">
         <div class="hero" id="ov-hero"></div>
         <div class="grid cols-4" id="ov-kpis"></div>
+        <div class="card" style="margin-top:16px;"><div class="card-title">🏭 Produção × Vendas</div><div class="card-sub">Kg produzidos vs faturamento · no período</div><div id="ov-prodvendas"></div></div>
         <div class="grid cols-3" style="margin-top:16px;">
           <div class="card"><div class="card-title">Concluídos por mês</div><div class="card-sub">Comodato + Predial · últimos 6 meses</div><div id="ov-bars"></div></div>
           <div class="card"><div class="card-title">Reformas por tipo</div><div class="card-sub">Comodato · no período</div><div id="ov-donut-c"></div></div>
@@ -329,8 +330,8 @@
         <div class="card">
           <div class="card-title">⚙️ Meta de produção · <span id="cfg-setor-nome">Confeitaria</span></div>
           <div class="card-sub">Em kg. Usada no medidor "Meta × Realizado".</div>
-          <div style="display:flex;gap:8px;margin:8px 0 14px;"><button class="chip cfg-setor active" data-s="conf" onclick="setCfgSetor('conf')">Confeitaria</button><button class="chip cfg-setor" data-s="panif" onclick="setCfgSetor('panif')">Panificação</button><button class="chip cfg-setor" data-s="emb" onclick="setCfgSetor('emb')">Embalação</button></div>
-          <div style="font-size:13px;font-weight:600;margin:14px 0 6px;">Meta padrão mensal (kg)</div>
+          <div style="display:flex;gap:8px;margin:8px 0 14px;"><button class="chip cfg-setor active" data-s="conf" onclick="setCfgSetor('conf')">Confeitaria</button><button class="chip cfg-setor" data-s="panif" onclick="setCfgSetor('panif')">Panificação</button><button class="chip cfg-setor" data-s="emb" onclick="setCfgSetor('emb')">Embalação</button><button class="chip cfg-setor" data-s="comercial" onclick="setCfgSetor('comercial')">Comercial</button></div>
+          <div style="font-size:13px;font-weight:600;margin:14px 0 6px;">Meta padrão mensal (<span id="cfg-unidade">kg</span>)</div>
           <input type="number" id="cfg-meta-padrao" placeholder="ex.: 30000" style="width:100%;box-sizing:border-box;background:var(--card-2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 12px;font-size:14px;font-family:inherit;">
           <div style="font-size:13px;font-weight:600;margin:20px 0 6px;">Meta de um mês específico (sobrepõe a padrão)</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -352,14 +353,27 @@
     <div class="page" id="page-comercial">
       <div class="content">
         <div class="grid cols-4" id="cm-kpis"></div>
+        <div class="grid cols-3" style="margin-top:16px;">
+          <div class="card"><div class="card-title">Meta × Realizado</div><div class="card-sub">R$ · no período</div><div id="cm-meta"></div></div>
+          <div class="card"><div class="card-title">Evolução</div><div class="card-sub">Comparativo de faturamento</div><div id="cm-comp"></div></div>
+          <div class="card"><div class="card-title">Concentração de clientes</div><div class="card-sub">Curva ABC</div><div id="cm-abc"></div></div>
+        </div>
         <div class="card" style="margin-top:16px;"><div class="card-title">Faturamento por mês</div><div class="card-sub">Últimos 6 meses</div><div id="cm-mes"></div></div>
+        <div class="grid cols-2" style="margin-top:16px;">
+          <div class="card"><div class="card-title">Faturamento por dia da semana</div><div class="card-sub">Total no período</div><div id="cm-dow"></div></div>
+          <div class="card"><div class="card-title">Top produtos por volume</div><div class="card-sub">No período · em unidades</div><div id="cm-qtd"></div></div>
+        </div>
         <div class="grid cols-2" style="margin-top:16px;">
           <div class="card"><div class="card-title">Top clientes</div><div class="card-sub">No período · por faturamento</div><div id="cm-clientes"></div></div>
           <div class="card"><div class="card-title">Top produtos</div><div class="card-sub">No período · por faturamento</div><div id="cm-produtos"></div></div>
         </div>
         <div class="grid cols-2" style="margin-top:16px;">
-          <div class="card"><div class="card-title">Por vendedor</div><div class="card-sub">No período</div><div id="cm-vendedores"></div></div>
+          <div class="card"><div class="card-title">Representantes · mais venderam</div><div class="card-sub">No período · por faturamento</div><div id="cm-rep-mais"></div></div>
+          <div class="card"><div class="card-title">Representantes · menos venderam</div><div class="card-sub">No período · quem menos faturou</div><div id="cm-rep-menos"></div></div>
+        </div>
+        <div class="grid cols-2" style="margin-top:16px;">
           <div class="card"><div class="card-title">Por região/rota</div><div class="card-sub">No período</div><div id="cm-regioes"></div></div>
+          <div class="card"><div class="card-title">Vendas por tipo de produto</div><div class="card-sub">No período · por faturamento</div><div id="cm-tipos"></div></div>
         </div>
       </div>
     </div>
@@ -391,7 +405,7 @@ let sessaoEmail='', currentRole=null, currentAtivo=false;
 const CORES=['#1f9d6b','#3b6ef5','#f5b013','#12b3a6','#8b7fe8','#6bbf8f','#f08a5d','#a7c4b5'];
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const META_CONF_KG = 30000; // fallback inicial (editável na tela Configurações)
-let config = { conf:{metaPadrao:META_CONF_KG,metas:{}}, panif:{metaPadrao:META_CONF_KG,metas:{}}, emb:{metaPadrao:META_CONF_KG,metas:{}} }; let cfgSetor='conf';
+let config = { conf:{metaPadrao:META_CONF_KG,metas:{}}, panif:{metaPadrao:META_CONF_KG,metas:{}}, emb:{metaPadrao:META_CONF_KG,metas:{}}, comercial:{metaPadrao:0,metas:{}} }; let cfgSetor='conf';
 
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function parseBR(s){ if(!s||typeof s!=='string')return null; const p=s.split('/'); if(p.length!==3)return null; const d=+p[0],m=+p[1],y=+p[2]; if(!d||!m||!y)return null; return new Date(y,m-1,d,12,0,0); }
@@ -408,9 +422,18 @@ function mesData(ym){ return new Date(+ym.slice(0,4), +ym.slice(5,7)-1, 1); }
 function diaData(ymd){ return new Date(+ymd.slice(0,4), +ymd.slice(5,7)-1, +ymd.slice(8,10), 12,0,0); }
 function mergeMapa(alvo, src){ if(!src) return; for(const k in src){ alvo[k]=(alvo[k]||0)+src[k]; } }
 function mapaParaArr(m, n){ return Object.keys(m).map(k=>({nome:k,val:m[k]})).sort((a,b)=>b.val-a.val).slice(0, n||8); }
-function barsMoneyHTML(itens,vazio){ if(!itens.length){ return '<div class="empty">'+(vazio||'Sem dados no período.')+'</div>'; } const max=itens[0].val||1; return itens.map((it,i)=>{ const cor=CORES[i%CORES.length],w=Math.round(it.val/max*100); return '<div class="bar-row"><div class="bar-head"><span class="legend-name">'+esc(it.nome)+'</span><span class="legend-val">'+fmtMoney(it.val)+'</span></div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;background:'+cor+';"></div></div></div>'; }).join(''); }
+function mapaParaArrAsc(m, n){ return Object.keys(m).map(k=>({nome:k,val:m[k]})).filter(x=>x.val>0).sort((a,b)=>a.val-b.val).slice(0, n||8); }
+function mesesNoRange(de, ate){ const out=[]; let d=new Date(de.getFullYear(),de.getMonth(),1); const end=new Date(ate.getFullYear(),ate.getMonth(),1); let g=0; while(d<=end && g<400){ out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); d.setMonth(d.getMonth()+1); g++; } return out; }
+function shiftMonth(ym, delta){ const d=new Date(+ym.slice(0,4), +ym.slice(5,7)-1+delta, 1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function fatMeses(meses){ return meses.reduce((a,ym)=>{ const d=comercialMensal.find(x=>x.periodo===ym); return a+(d?(d.faturamento||0):0); },0); }
+function setaPct(base, atual){ if(!base) return '<span style="color:var(--muted);">—</span>'; const pct=(atual-base)/base*100, up=pct>=0, cor=up?'#16b364':'#ef4444', s=up?'▲':'▼'; return '<span style="color:'+cor+';font-weight:800;">'+s+' '+(up?'+':'')+pct.toFixed(1).replace('.',',')+'%</span>'; }
+function barsQtdHTML(itens,vazio){ if(!itens.length){ return '<div class="empty">'+(vazio||'Sem dados no período.')+'</div>'; } const max=Math.max.apply(null,itens.map(x=>x.val).concat([1])); return itens.map((it,i)=>{ const cor=CORES[i%CORES.length],w=Math.round(it.val/max*100); return '<div class="bar-row"><div class="bar-head"><span class="legend-name">'+esc(it.nome)+'</span><span class="legend-val">'+Math.round(it.val).toLocaleString('pt-BR')+' un</span></div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;background:'+cor+';"></div></div></div>'; }).join(''); }
+function fmtMoneyCompact(v){ v=v||0; if(v>=1e6) return 'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+'M'; if(v>=1e3) return 'R$ '+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+'k'; return 'R$ '+Math.round(v).toLocaleString('pt-BR'); }
+function mapaParaDonut(m, n){ const arr=Object.keys(m).map(k=>({nome:k,val:m[k]})).filter(x=>x.val>0).sort((a,b)=>b.val-a.val); n=n||7; if(arr.length<=n) return arr; const top=arr.slice(0,n); const resto=arr.slice(n).reduce((a,x)=>a+x.val,0); if(resto>0) top.push({nome:'Outros',val:resto}); return top; }
+function donutMoneyHTML(itens,total,rot){ if(!itens.length||!total){ return '<div class="empty">Sem dados no período.</div>'; } const r=54,C=2*Math.PI*r,gap=5; let off=0,segs=''; itens.forEach((it,i)=>{ const f=it.val/total,cor=CORES[i%CORES.length]; segs+='<circle cx="70" cy="70" r="'+r+'" fill="none" stroke="'+cor+'" stroke-width="9" stroke-dasharray="'+Math.max(0.5,f*C-gap).toFixed(2)+' '+(C-Math.max(0.5,f*C-gap)).toFixed(2)+'" stroke-dashoffset="'+(-off*C).toFixed(2)+'" transform="rotate(-90 70 70)" stroke-linecap="round"></circle>'; off+=f; }); const svg='<div style="display:flex;justify-content:center;margin:6px 0 10px;"><svg viewBox="0 0 140 140" width="150" height="150">'+segs+'<circle cx="70" cy="70" r="44" fill="'+CORES[0]+'14"></circle><text x="70" y="66" text-anchor="middle" style="fill:var(--text);font:700 16px Inter;">'+fmtMoneyCompact(total)+'</text><text x="70" y="85" text-anchor="middle" style="fill:var(--muted);font:400 11px Inter;">'+(rot||'total')+'</text></svg></div>'; const leg=itens.map((it,i)=>{ const cor=CORES[i%CORES.length],pct=Math.round(it.val/total*100); return '<div class="legend-row"><span class="legend-dot" style="background:'+cor+';"></span><span class="legend-name">'+esc(it.nome)+'</span><span class="legend-val">'+fmtMoney(it.val)+' · '+pct+'%</span></div>'; }).join(''); return svg+leg; }
+function barsMoneyHTML(itens,vazio){ if(!itens.length){ return '<div class="empty">'+(vazio||'Sem dados no período.')+'</div>'; } const max=Math.max.apply(null,itens.map(x=>x.val).concat([1])); return itens.map((it,i)=>{ const cor=CORES[i%CORES.length],w=Math.round(it.val/max*100); return '<div class="bar-row"><div class="bar-head"><span class="legend-name">'+esc(it.nome)+'</span><span class="legend-val">'+fmtMoney(it.val)+'</span></div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;background:'+cor+';"></div></div></div>'; }).join(''); }
 function metaDoPeriodo(setor){ const c=config[setor]||config.conf; const r=range(); let d=new Date(r.de.getFullYear(),r.de.getMonth(),1); const end=new Date(r.ate.getFullYear(),r.ate.getMonth(),1); let meta=0,g=0; while(d<=end&&g<120){ const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); meta+=(c.metas[key]!=null?Number(c.metas[key]):Number(c.metaPadrao)||0); d.setMonth(d.getMonth()+1); g++; } return meta; }
-function renderConfig(){ const c=config[cfgSetor]; document.querySelectorAll('.cfg-setor').forEach(b=>b.classList.toggle('active',b.dataset.s===cfgSetor)); const tt=document.getElementById('cfg-setor-nome'); if(tt) tt.textContent=({conf:'Confeitaria',panif:'Panificação',emb:'Embalação'})[cfgSetor]||'Confeitaria'; const mp=document.getElementById('cfg-meta-padrao'); if(mp) mp.value=c.metaPadrao||''; const sm=document.getElementById('cfg-mes'); if(sm&&sm.children.length===0){ let o='<option value="">Mês</option>'; MESES.forEach((m,i)=>o+='<option value="'+i+'">'+m+'</option>'); sm.innerHTML=o; } const sa=document.getElementById('cfg-ano'); if(sa&&sa.children.length===0){ const y=new Date().getFullYear(); let o='<option value="">Ano</option>'; for(var k=y+1;k>=y-3;k--) o+='<option value="'+k+'">'+k+'</option>'; sa.innerHTML=o; } pintarMetasLista(); }
+function renderConfig(){ const c=config[cfgSetor]; document.querySelectorAll('.cfg-setor').forEach(b=>b.classList.toggle('active',b.dataset.s===cfgSetor)); const tt=document.getElementById('cfg-setor-nome'); if(tt) tt.textContent=({conf:'Confeitaria',panif:'Panificação',emb:'Embalação',comercial:'Comercial'})[cfgSetor]||'Confeitaria'; const un=document.getElementById('cfg-unidade'); if(un) un.textContent=(cfgSetor==='comercial'?'R$':'kg'); const mp=document.getElementById('cfg-meta-padrao'); if(mp) mp.value=c.metaPadrao||''; const sm=document.getElementById('cfg-mes'); if(sm&&sm.children.length===0){ let o='<option value="">Mês</option>'; MESES.forEach((m,i)=>o+='<option value="'+i+'">'+m+'</option>'); sm.innerHTML=o; } const sa=document.getElementById('cfg-ano'); if(sa&&sa.children.length===0){ const y=new Date().getFullYear(); let o='<option value="">Ano</option>'; for(var k=y+1;k>=y-3;k--) o+='<option value="'+k+'">'+k+'</option>'; sa.innerHTML=o; } pintarMetasLista(); }
 function pintarMetasLista(){ const el=document.getElementById('cfg-metas-lista'); if(!el) return; const metas=config[cfgSetor].metas||{}; const keys=Object.keys(metas).sort(); if(!keys.length){ el.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0;">Nenhuma meta específica — usando a padrão.</div>'; return; } el.innerHTML=keys.map(k=>{ const pp=k.split('-'); const lbl=MESES[+pp[1]-1]+'/'+pp[0]; return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="font-size:14px;">'+lbl+'</span><span style="display:flex;align-items:center;gap:12px;"><b>'+fmtKg(metas[k])+' kg</b><button onclick="removerMetaMes(\''+k+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;">×</button></span></div>'; }).join(''); }
 window.addMetaMes=function(){ const mes=document.getElementById('cfg-mes').value, ano=document.getElementById('cfg-ano').value, kg=parseFloat(document.getElementById('cfg-meta-mes').value); const st=document.getElementById('cfg-status'); if(mes===''||ano===''||!kg){ if(st)st.textContent='Preencha mês, ano e kg.'; return; } config[cfgSetor].metas[ano+'-'+String(+mes+1).padStart(2,'0')]=kg; document.getElementById('cfg-meta-mes').value=''; pintarMetasLista(); salvarConfig(); };
 window.removerMetaMes=function(k){ delete config[cfgSetor].metas[k]; pintarMetasLista(); salvarConfig(); };
@@ -422,14 +445,14 @@ function renderMeta(realizado, meta){ const pct=meta>0?Math.round(realizado/meta
   return '<div style="display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 10px;"><div><div style="font-size:26px;font-weight:800;">'+fmtKg(realizado)+'</div><div style="font-size:12px;color:var(--muted);">realizado (kg)</div></div><div style="text-align:right;"><div style="font-size:15px;font-weight:700;color:var(--muted);">/ '+fmtKg(meta)+'</div><div style="font-size:12px;color:var(--muted);">meta (kg)</div></div></div>'+
   '<div class="bar-track" style="height:12px;"><div class="bar-fill" style="width:'+w+'%;background:'+cor+';"></div></div>'+
   '<div style="text-align:center;margin-top:8px;font-size:20px;font-weight:800;color:'+cor+';">'+pct+'%</div>'; }
-function renderMetaGauge(realizado, meta){ var pctRaw=meta>0?realizado/meta*100:0, f=Math.max(0,Math.min(1,pctRaw/100)), R=80, C=Math.PI*R, cor=pctRaw>=100?'#16b364':'#f5851f', path='M 20 100 A 80 80 0 0 1 180 100';
+function renderMetaGauge(realizado, meta, fmtVal){ fmtVal = fmtVal || function(v){ return fmtKg(v)+' kg'; }; var pctRaw=meta>0?realizado/meta*100:0, f=Math.max(0,Math.min(1,pctRaw/100)), R=80, C=Math.PI*R, cor=pctRaw>=100?'#16b364':'#f5851f', path='M 20 100 A 80 80 0 0 1 180 100';
   return '<div style="display:flex;justify-content:center;margin:2px 0;"><svg viewBox="0 0 200 128" width="100%" style="max-width:300px;">'+
     '<path d="'+path+'" fill="none" stroke="var(--track)" stroke-width="18" stroke-linecap="round"></path>'+
     '<path d="'+path+'" fill="none" stroke="'+cor+'" stroke-width="18" stroke-linecap="round" stroke-dasharray="'+(f*C).toFixed(2)+' '+(C*2).toFixed(2)+'"></path>'+
     '<text x="100" y="94" text-anchor="middle" style="fill:'+cor+';font:800 30px Inter;">'+pctRaw.toFixed(1).replace('.',',')+'%</text>'+
     '<text x="20" y="122" text-anchor="middle" style="fill:var(--muted);font:500 11px Inter;">0</text>'+
     '<text x="180" y="122" text-anchor="middle" style="fill:var(--muted);font:500 11px Inter;">100</text></svg></div>'+
-    '<div style="text-align:center;font-size:12px;color:var(--muted);margin-top:-4px;">'+fmtKg(realizado)+' de '+fmtKg(meta)+' kg</div>'; }
+    '<div style="text-align:center;font-size:12px;color:var(--muted);margin-top:-4px;">'+fmtVal(realizado)+' de '+fmtVal(meta)+'</div>'; }
 function monthBarsSum(itens,dateFn,valFn,cor,withLine){ const now=new Date(),bk=[]; for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); bk.push({y:d.getFullYear(),m:d.getMonth(),val:0}); }
   itens.forEach(e=>{ const dt=dateFn(e); if(!dt)return; for(const b of bk){ if(dt.getFullYear()===b.y&&dt.getMonth()===b.m){ b.val+=(valFn(e)||0); break; } } });
   const max=Math.max(1,...bk.map(b=>b.val)); const W=340,H=170,padB=28,padT=16,bw=30,gap=(W-bw*6)/7; let bars=''; const pts=[];
@@ -571,6 +594,12 @@ function render(){
     document.getElementById('ov-bars').innerHTML = monthBars(estoque.filter(e=>conclusaoDe(e)).concat(chamados.filter(c=>c.status==='concluido')), conclusaoDe, '#3b6ef5');
     document.getElementById('ov-donut-c').innerHTML = donutHTML(agrupar(cRef,'tipo'), cRef.length, 'reformas');
     document.getElementById('ov-donut-p').innerHTML = donutHTML(agrupar(pCon,'setor'), pCon.length, 'chamados');
+    const _rOv=range();
+    const _kgOv=registros.filter(x=>{const dt=parseBR(x.data); return dt&&dt>=_rOv.de&&dt<=_rOv.ate;}).reduce((a,x)=>a+kgReg(x),0);
+    const _umOv=(periodo==='tudo')||(filtroAno!=='');
+    let _docsOv; if(_umOv){ _docsOv=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_rOv.de && ini<=_rOv.ate; }); } else { _docsOv=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=_rOv.de && dt<=_rOv.ate; }); }
+    const _fatOv=_docsOv.reduce((a,d)=>a+(d.faturamento||0),0); const _rkg=_kgOv>0?_fatOv/_kgOv:0;
+    document.getElementById('ov-prodvendas').innerHTML='<div style="display:flex;justify-content:space-around;text-align:center;flex-wrap:wrap;gap:16px;margin:6px 0;"><div><div style="font-size:26px;font-weight:800;color:#1f9d6b;">'+fmtKg(_kgOv)+' kg</div><div style="font-size:12px;color:var(--muted);">produzidos</div></div><div><div style="font-size:26px;font-weight:800;color:#f5b013;">'+fmtMoney(_fatOv)+'</div><div style="font-size:12px;color:var(--muted);">faturados</div></div><div><div style="font-size:26px;font-weight:800;color:#3b6ef5;">'+fmtMoney(_rkg)+'</div><div style="font-size:12px;color:var(--muted);">por kg produzido</div></div></div>';
   }
   // COMODATO
   if(pagina==='comodato'){
@@ -666,18 +695,39 @@ function render(){
     else { docs=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=rr.de && dt<=rr.ate; }); }
     const fat=docs.reduce((a,d)=>a+(d.faturamento||0),0);
     const reg=docs.reduce((a,d)=>a+(d.registros||0),0);
-    const mC={},mP={},mR={},mV={};
-    docs.forEach(d=>{ mergeMapa(mC,d.clientes); mergeMapa(mP,d.produtos); mergeMapa(mR,d.regioes); mergeMapa(mV,d.vendedores); });
+    const notas=docs.reduce((a,d)=>a+(d.notas||0),0);
+    const mC={},mP={},mR={},mV={},mRep={},mTipo={};
+    docs.forEach(d=>{ mergeMapa(mC,d.clientes); mergeMapa(mP,d.produtos); mergeMapa(mR,d.regioes); mergeMapa(mV,d.vendedores); mergeMapa(mRep,d.representantes); mergeMapa(mTipo,d.tiposProduto); });
     document.getElementById('cm-kpis').innerHTML=
       kpiCard('Faturamento', fmtMoney(fat), '💰','#1f9d6b')+
-      kpiCard('Nº de registros', reg.toLocaleString('pt-BR'), '🧾','#3b6ef5')+
-      kpiCard('Ticket médio', fmtMoney(reg?fat/reg:0), '🎯','#f5b013')+
+      kpiCard('Notas fiscais', notas.toLocaleString('pt-BR'), '🧾','#3b6ef5')+
+      kpiCard('Ticket médio', fmtMoney(notas?fat/notas:0), '🎯','#f5b013')+
       kpiCard('Clientes distintos', Object.keys(mC).length.toLocaleString('pt-BR'), '👥','#8b5cf6');
     document.getElementById('cm-mes').innerHTML=monthBarsSum(comercialMensal.map(d=>({dt:mesData(d.periodo),fat:d.faturamento})), x=>x.dt, x=>x.fat, '#1f9d6b', true);
     document.getElementById('cm-clientes').innerHTML=barsMoneyHTML(mapaParaArr(mC,8));
     document.getElementById('cm-produtos').innerHTML=barsMoneyHTML(mapaParaArr(mP,8));
-    document.getElementById('cm-vendedores').innerHTML=barsMoneyHTML(mapaParaArr(mV,8));
+    document.getElementById('cm-rep-mais').innerHTML=barsMoneyHTML(mapaParaArr(mRep,8),'Sem representantes no período.');
+    document.getElementById('cm-rep-menos').innerHTML=barsMoneyHTML(mapaParaArrAsc(mRep,8),'Sem representantes no período.');
     document.getElementById('cm-regioes').innerHTML=barsMoneyHTML(mapaParaArr(mR,8));
+    const totalTipo=Object.keys(mTipo).reduce((a,k)=>a+mTipo[k],0);
+    document.getElementById('cm-tipos').innerHTML=donutMoneyHTML(mapaParaDonut(mTipo,7), totalTipo, 'faturamento');
+    // item 2: meta comercial
+    document.getElementById('cm-meta').innerHTML=renderMetaGauge(fat, metaDoPeriodo('comercial'), fmtMoney);
+    // item 1: comparativo (base mensal)
+    const _meses=mesesNoRange(rr.de,rr.ate), _n=_meses.length||1, _primeiro=_meses[0]||shiftMonth(new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0'),0);
+    const _fatR=fatMeses(_meses);
+    const _mesesAnt=[]; for(let i=_n;i>=1;i--) _mesesAnt.push(shiftMonth(_primeiro,-i)); const _fatAnt=fatMeses(_mesesAnt);
+    const _fatAno=fatMeses(_meses.map(ym=>shiftMonth(ym,-12)));
+    document.getElementById('cm-comp').innerHTML='<div style="margin:4px 0;"><div style="font-size:13px;color:var(--muted);">vs período anterior</div><div style="font-size:22px;">'+setaPct(_fatAnt,_fatR)+'</div><div style="font-size:11px;color:var(--muted);">'+(_fatAnt?fmtMoney(_fatAnt):'sem dado')+'</div></div>'+'<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;"><div style="font-size:13px;color:var(--muted);">vs ano passado</div><div style="font-size:22px;">'+setaPct(_fatAno,_fatR)+'</div><div style="font-size:11px;color:var(--muted);">'+(_fatAno?fmtMoney(_fatAno):'sem dado')+'</div></div>';
+    // item 3: curva ABC de clientes
+    const _arrC=mapaParaArr(mC,99999), _totC=_arrC.reduce((a,x)=>a+x.val,0), _top10=_arrC.slice(0,10).reduce((a,x)=>a+x.val,0), _pct10=_totC>0?_top10/_totC*100:0;
+    document.getElementById('cm-abc').innerHTML='<div style="text-align:center;margin:8px 0;"><div style="font-size:38px;font-weight:800;color:var(--primary);">'+Math.round(_pct10)+'%</div><div style="font-size:13px;color:var(--muted);">do faturamento vem dos <b>10 maiores</b> clientes</div></div><div class="bar-track" style="height:12px;"><div class="bar-fill" style="width:'+Math.min(100,_pct10)+'%;background:var(--primary);"></div></div><div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;">'+_arrC.length.toLocaleString('pt-BR')+' clientes no período</div>';
+    // item 9: faturamento por dia da semana
+    const _dow={}; docs.forEach(d=>mergeMapa(_dow,d.porDiaSemana)); const _DIAS=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    document.getElementById('cm-dow').innerHTML=barsMoneyHTML(_DIAS.map((nm,i)=>({nome:nm,val:_dow[String(i)]||0})),'Sem dados no período.');
+    // item 6: top produtos por volume
+    const _mQtd={}; docs.forEach(d=>mergeMapa(_mQtd,d.produtosQtd));
+    document.getElementById('cm-qtd').innerHTML=barsQtdHTML(mapaParaArr(_mQtd,8),'Sem dados no período.');
   }
   const fmt=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
   document.getElementById('pg-sub').textContent = periodo==='tudo' ? 'Todo o período' : (fmt(r.de)+' – '+fmt(r.ate));
@@ -733,7 +783,7 @@ function liberar(d){
   if(!subE){ subE=onSnapshot(collection(dbC,'equipamentosEstoque'), s=>{ estoque=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.error('estoque:',e)); }
   if(!subCM){ subCM=onSnapshot(collection(dbC,'comercialMensal'), s=>{ comercialMensal=s.docs.map(x=>x.data()); render(); }, e=>console.warn('comercialMensal:',e.code||e.message)); }
   if(!subCD){ subCD=onSnapshot(collection(dbC,'comercialDiario'), s=>{ comercialDiario=s.docs.map(x=>x.data()); render(); }, e=>console.warn('comercialDiario:',e.code||e.message)); }
-  if(!subCfg){ subCfg=onSnapshot(doc(dbC,'configGestao','app'), snap=>{ if(snap.exists()){ const dd=snap.data(); if(dd.conf||dd.panif||dd.emb){ if(dd.conf) config.conf=dd.conf; if(dd.panif) config.panif=dd.panif; if(dd.emb) config.emb=dd.emb; } else { config.conf={metaPadrao:dd.metaPadrao!=null?dd.metaPadrao:META_CONF_KG, metas:dd.metas||{}}; } } render(); }, e=>console.warn('config:',e.code||e.message)); }
+  if(!subCfg){ subCfg=onSnapshot(doc(dbC,'configGestao','app'), snap=>{ if(snap.exists()){ const dd=snap.data(); if(dd.conf||dd.panif||dd.emb){ if(dd.conf) config.conf=dd.conf; if(dd.panif) config.panif=dd.panif; if(dd.emb) config.emb=dd.emb; if(dd.comercial) config.comercial=dd.comercial; } else { config.conf={metaPadrao:dd.metaPadrao!=null?dd.metaPadrao:META_CONF_KG, metas:dd.metas||{}}; } } render(); }, e=>console.warn('config:',e.code||e.message)); }
   if(!subR){ subR=onSnapshot(collection(dbProd,'registros'), s=>{ registros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('registros (produção):',e.code||e.message)); }
   if(!subQuad){ subQuad=onSnapshot(collection(dbProd,'quadraRegistros'), s=>{ quadraRegistros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('quadraRegistros:',e.code||e.message)); }
   if(!subCat){ subCat=onSnapshot(collection(dbProd,'produtosConfeitaria'), s=>{ prodCatalog={}; s.docs.forEach(x=>{const dd=x.data(); if(dd.cod!=null&&dd.cod!=='') prodCatalog['c:'+dd.cod]=dd.pesoPct||0; if(dd.nome) prodCatalog['n:'+dd.nome]=dd.pesoPct||0;}); render(); }, e=>console.warn('produtosConfeitaria:',e.code||e.message)); }
