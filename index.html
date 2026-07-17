@@ -451,6 +451,28 @@ function faturamentoChart(mensalArr){
   const legenda='<div style="display:flex;gap:16px;justify-content:flex-end;font-size:11px;color:var(--muted);margin-bottom:4px;flex-wrap:wrap;"><span><span style="display:inline-block;width:10px;height:10px;background:#1f9d6b;border-radius:2px;vertical-align:middle;"></span> Valor</span><span><span style="display:inline-block;width:12px;height:0;border-top:2px dashed #f5b013;vertical-align:middle;"></span> Ano anterior</span><span><span style="display:inline-block;width:10px;height:10px;border:1.5px dashed #8b5cf6;border-radius:2px;vertical-align:middle;"></span> Previsão</span></div>';
   return legenda+'<div style="margin-top:4px;"><svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-height:320px;">'+bars+linha+labels+'</svg></div>';
 }
+function colunasHTML(itens, fmtFn){
+  if(!itens.length) return '<div class="empty">Sem dados no período.</div>';
+  const max=Math.max.apply(null,itens.map(x=>x.val).concat([1])), n=itens.length, W=Math.max(320,n*72), H=200, padB=28, padT=24, step=W/n, bw=step*0.5;
+  let out='';
+  itens.forEach((it,i)=>{ const xc=i*step+step/2, x=xc-bw/2, hh=(H-padB-padT)*(it.val/max), y=H-padB-hh, c=(it.val>0&&it.val===max)?'#f5b013':'#1f9d6b';
+    out+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(2,hh).toFixed(1)+'" rx="5" fill="'+c+'"></rect>';
+    if(it.val>0) out+='<text x="'+xc.toFixed(1)+'" y="'+(y-6).toFixed(1)+'" text-anchor="middle" style="fill:var(--text);font:600 9px Inter;">'+(fmtFn?fmtFn(it.val):it.val)+'</text>';
+    out+='<text x="'+xc.toFixed(1)+'" y="'+(H-10)+'" text-anchor="middle" style="fill:var(--muted);font:500 11px Inter;">'+esc(it.nome)+'</text>'; });
+  return '<div style="margin-top:8px;"><svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-height:220px;">'+out+'</svg></div>';
+}
+function lollipopHTML(itens, fmtFn){
+  if(!itens.length) return '<div class="empty">Sem dados no período.</div>';
+  const max=Math.max.apply(null,itens.map(x=>x.val).concat([1]));
+  return '<div style="margin-top:6px;">'+itens.map((it,i)=>{ const cor=CORES[i%CORES.length], w=Math.max(1,it.val/max*100);
+    return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;"><span style="flex:0 0 42%;max-width:42%;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(it.nome)+'</span><div style="flex:1;position:relative;height:14px;"><div style="position:absolute;top:6px;left:0;height:2px;width:'+w+'%;background:'+cor+'66;border-radius:2px;"></div><div style="position:absolute;top:2px;left:calc('+w+'% - 5px);width:10px;height:10px;border-radius:50%;background:'+cor+';box-shadow:0 0 0 3px '+cor+'22;"></div></div><span style="flex:0 0 auto;text-align:right;font-size:12px;font-weight:700;white-space:nowrap;">'+(fmtFn?fmtFn(it.val):it.val)+'</span></div>'; }).join('')+'</div>';
+}
+function rankingHTML(itens, fmtFn, neutro){
+  if(!itens.length) return '<div class="empty">Sem dados no período.</div>';
+  const max=Math.max.apply(null,itens.map(x=>x.val).concat([1])), medal=['#f5b013','#9aa4b2','#cd7f32'];
+  return '<div style="margin-top:4px;">'+itens.map((it,i)=>{ const top=!neutro&&i<3, cCirc=top?medal[i]:'var(--card-2)', cTxt=top?'#0f111a':'var(--muted)', cBar=top?medal[i]:CORES[i%CORES.length], w=Math.max(2,it.val/max*100);
+    return '<div style="padding:7px 0;border-bottom:1px solid var(--border);"><div style="display:flex;align-items:center;gap:10px;"><span style="flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:'+cCirc+';color:'+cTxt+';font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;">'+(i+1)+'</span><span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(it.nome)+'</span><span style="font-size:13px;font-weight:700;white-space:nowrap;">'+(fmtFn?fmtFn(it.val):it.val)+'</span></div><div class="bar-track" style="height:5px;margin-top:5px;margin-left:34px;"><div class="bar-fill" style="width:'+w+'%;background:'+cBar+';"></div></div></div>'; }).join('')+'</div>';
+}
 function mesesNoRange(de, ate){ const out=[]; let d=new Date(de.getFullYear(),de.getMonth(),1); const end=new Date(ate.getFullYear(),ate.getMonth(),1); let g=0; while(d<=end && g<400){ out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); d.setMonth(d.getMonth()+1); g++; } return out; }
 function shiftMonth(ym, delta){ const d=new Date(+ym.slice(0,4), +ym.slice(5,7)-1+delta, 1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function fatMeses(meses){ return meses.reduce((a,ym)=>{ const d=comercialMensal.find(x=>x.periodo===ym); return a+(d?(d.faturamento||0):0); },0); }
@@ -732,10 +754,10 @@ function render(){
       kpiCard('Ticket médio', fmtMoney(notas?fat/notas:0), '🎯','#f5b013')+
       kpiCard('Clientes distintos', Object.keys(mC).length.toLocaleString('pt-BR'), '👥','#8b5cf6');
     document.getElementById('cm-mes').innerHTML=faturamentoChart(comercialMensal);
-    document.getElementById('cm-clientes').innerHTML=barsMoneyHTML(mapaParaArr(mC,8));
-    document.getElementById('cm-produtos').innerHTML=barsMoneyHTML(mapaParaArr(mP,8));
-    document.getElementById('cm-rep-mais').innerHTML=barsMoneyHTML(mapaParaArr(mRep,8),'Sem representantes no período.');
-    document.getElementById('cm-rep-menos').innerHTML=barsMoneyHTML(mapaParaArrAsc(mRep,8),'Sem representantes no período.');
+    document.getElementById('cm-clientes').innerHTML=rankingHTML(mapaParaArr(mC,8), fmtMoney);
+    document.getElementById('cm-produtos').innerHTML=lollipopHTML(mapaParaArr(mP,8), fmtMoney);
+    document.getElementById('cm-rep-mais').innerHTML=rankingHTML(mapaParaArr(mRep,8), fmtMoney);
+    document.getElementById('cm-rep-menos').innerHTML=rankingHTML(mapaParaArrAsc(mRep,8), fmtMoney, true);
     document.getElementById('cm-regioes').innerHTML=barsMoneyHTML(mapaParaArr(mR,8));
     const totalTipo=Object.keys(mTipo).reduce((a,k)=>a+mTipo[k],0);
     document.getElementById('cm-tipos').innerHTML=donutMoneyHTML(mapaParaDonut(mTipo,7), totalTipo, 'faturamento');
@@ -752,10 +774,10 @@ function render(){
     document.getElementById('cm-abc').innerHTML='<div style="text-align:center;margin:8px 0;"><div style="font-size:38px;font-weight:800;color:var(--primary);">'+Math.round(_pct10)+'%</div><div style="font-size:13px;color:var(--muted);">do faturamento vem dos <b>10 maiores</b> clientes</div></div><div class="bar-track" style="height:12px;"><div class="bar-fill" style="width:'+Math.min(100,_pct10)+'%;background:var(--primary);"></div></div><div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;">'+_arrC.length.toLocaleString('pt-BR')+' clientes no período</div>';
     // item 9: faturamento por dia da semana
     const _dow={}; docs.forEach(d=>mergeMapa(_dow,d.porDiaSemana)); const _DIAS=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-    document.getElementById('cm-dow').innerHTML=barsMoneyHTML(_DIAS.map((nm,i)=>({nome:nm,val:_dow[String(i)]||0})),'Sem dados no período.');
+    document.getElementById('cm-dow').innerHTML=colunasHTML(_DIAS.map((nm,i)=>({nome:nm,val:_dow[String(i)]||0})), fmtMoneyCompact);
     // item 6: top produtos por volume
     const _mQtd={}; docs.forEach(d=>mergeMapa(_mQtd,d.produtosQtd));
-    document.getElementById('cm-qtd').innerHTML=barsQtdHTML(mapaParaArr(_mQtd,8),'Sem dados no período.');
+    document.getElementById('cm-qtd').innerHTML=lollipopHTML(mapaParaArr(_mQtd,8), v=>Math.round(v).toLocaleString('pt-BR')+' un');
   }
   const fmt=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
   document.getElementById('pg-sub').textContent = periodo==='tudo' ? 'Todo o período' : (fmt(r.de)+' – '+fmt(r.ate));
