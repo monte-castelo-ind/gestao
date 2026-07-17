@@ -358,7 +358,7 @@
           <div class="card"><div class="card-title">Evolução</div><div class="card-sub">Comparativo de faturamento</div><div id="cm-comp"></div></div>
           <div class="card"><div class="card-title">Concentração de clientes</div><div class="card-sub">Curva ABC</div><div id="cm-abc"></div></div>
         </div>
-        <div class="card" style="margin-top:16px;"><div class="card-title">Faturamento por mês</div><div class="card-sub">Últimos 6 meses</div><div id="cm-mes"></div></div>
+        <div class="card" style="margin-top:16px;"><div class="card-title">Faturamento por mês</div><div class="card-sub">Últimos 12 meses · valor, ano anterior e previsão</div><div id="cm-mes"></div></div>
         <div class="grid cols-2" style="margin-top:16px;">
           <div class="card"><div class="card-title">Faturamento por dia da semana</div><div class="card-sub">Total no período</div><div id="cm-dow"></div></div>
           <div class="card"><div class="card-title">Top produtos por volume</div><div class="card-sub">No período · em unidades</div><div id="cm-qtd"></div></div>
@@ -423,6 +423,34 @@ function diaData(ymd){ return new Date(+ymd.slice(0,4), +ymd.slice(5,7)-1, +ymd.
 function mergeMapa(alvo, src){ if(!src) return; for(const k in src){ alvo[k]=(alvo[k]||0)+src[k]; } }
 function mapaParaArr(m, n){ return Object.keys(m).map(k=>({nome:k,val:m[k]})).sort((a,b)=>b.val-a.val).slice(0, n||8); }
 function mapaParaArrAsc(m, n){ return Object.keys(m).map(k=>({nome:k,val:m[k]})).filter(x=>x.val>0).sort((a,b)=>a.val-b.val).slice(0, n||8); }
+function numCompact(v){ v=v||0; if(v>=1e6) return (v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:2})+'M'; if(v>=1e3) return Math.round(v/1e3).toLocaleString('pt-BR')+'k'; return String(Math.round(v)); }
+function faturamentoChart(mensalArr){
+  const now=new Date(); const meses=[];
+  for(let i=11;i>=0;i--){ const dd=new Date(now.getFullYear(),now.getMonth()-i,1); meses.push({ym:dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0'), d:dd}); }
+  const mapa={}; mensalArr.forEach(x=>mapa[x.periodo]=x.faturamento||0);
+  const curYm=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const vals=meses.map(m=>mapa[m.ym]||0);
+  const anoAnt=meses.map(m=>{ const dd=new Date(m.d.getFullYear()-1,m.d.getMonth(),1); const ym=dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0'); return mapa[ym]||0; });
+  const diaHoje=now.getDate(), diasMes=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const atualMes=mapa[curYm]||0; const previsao=diaHoje>0?atualMes/diaHoje*diasMes:atualMes;
+  const max=Math.max.apply(null,vals.concat(anoAnt).concat([previsao,1]));
+  const W=920,H=300,padL=14,padR=14,padB=34,padT=26,n=12,step=(W-padL-padR)/n,bw=step*0.5;
+  const yOf=v=>H-padB-(v/max)*(H-padB-padT);
+  let bars='',labels='',pts=[];
+  meses.forEach((m,i)=>{ const xc=padL+i*step+step/2; const x=xc-bw/2; const isCur=m.ym===curYm;
+    if(isCur){ const yP=yOf(previsao); bars+='<rect x="'+x.toFixed(1)+'" y="'+yP.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(H-padB-yP).toFixed(1)+'" rx="5" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="5 3"></rect>';
+      const yA=yOf(atualMes); bars+='<rect x="'+x.toFixed(1)+'" y="'+yA.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(H-padB-yA).toFixed(1)+'" rx="5" fill="#1f9d6b"></rect>';
+      labels+='<text x="'+xc.toFixed(1)+'" y="'+(yP-6).toFixed(1)+'" text-anchor="middle" style="fill:#8b5cf6;font:700 9px Inter;">'+numCompact(previsao)+'</text>';
+    } else { const y=yOf(vals[i]); bars+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(H-padB-y).toFixed(1)+'" rx="5" fill="#1f9d6b"></rect>';
+      if(vals[i]>0) labels+='<text x="'+xc.toFixed(1)+'" y="'+(y-6).toFixed(1)+'" text-anchor="middle" style="fill:var(--text);font:600 8.5px Inter;">'+numCompact(vals[i])+'</text>';
+    }
+    labels+='<text x="'+xc.toFixed(1)+'" y="'+(H-12)+'" text-anchor="middle" style="fill:var(--muted);font:500 10px Inter;">'+MESES[m.d.getMonth()]+'-'+String(m.d.getFullYear()).slice(2)+'</text>';
+    pts.push([xc,yOf(anoAnt[i])]);
+  });
+  let linha=''; if(anoAnt.some(v=>v>0)){ const poly=pts.map(pp=>pp[0].toFixed(1)+','+pp[1].toFixed(1)).join(' '); linha='<polyline points="'+poly+'" fill="none" stroke="#f5b013" stroke-width="2" stroke-dasharray="4 3" stroke-linejoin="round"></polyline>'+pts.map(pp=>'<circle cx="'+pp[0].toFixed(1)+'" cy="'+pp[1].toFixed(1)+'" r="3" fill="#f5b013"></circle>').join(''); }
+  const legenda='<div style="display:flex;gap:16px;justify-content:flex-end;font-size:11px;color:var(--muted);margin-bottom:4px;flex-wrap:wrap;"><span><span style="display:inline-block;width:10px;height:10px;background:#1f9d6b;border-radius:2px;vertical-align:middle;"></span> Valor</span><span><span style="display:inline-block;width:12px;height:0;border-top:2px dashed #f5b013;vertical-align:middle;"></span> Ano anterior</span><span><span style="display:inline-block;width:10px;height:10px;border:1.5px dashed #8b5cf6;border-radius:2px;vertical-align:middle;"></span> Previsão</span></div>';
+  return legenda+'<div style="margin-top:4px;"><svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-height:320px;">'+bars+linha+labels+'</svg></div>';
+}
 function mesesNoRange(de, ate){ const out=[]; let d=new Date(de.getFullYear(),de.getMonth(),1); const end=new Date(ate.getFullYear(),ate.getMonth(),1); let g=0; while(d<=end && g<400){ out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); d.setMonth(d.getMonth()+1); g++; } return out; }
 function shiftMonth(ym, delta){ const d=new Date(+ym.slice(0,4), +ym.slice(5,7)-1+delta, 1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function fatMeses(meses){ return meses.reduce((a,ym)=>{ const d=comercialMensal.find(x=>x.periodo===ym); return a+(d?(d.faturamento||0):0); },0); }
@@ -703,7 +731,7 @@ function render(){
       kpiCard('Notas fiscais', notas.toLocaleString('pt-BR'), '🧾','#3b6ef5')+
       kpiCard('Ticket médio', fmtMoney(notas?fat/notas:0), '🎯','#f5b013')+
       kpiCard('Clientes distintos', Object.keys(mC).length.toLocaleString('pt-BR'), '👥','#8b5cf6');
-    document.getElementById('cm-mes').innerHTML=monthBarsSum(comercialMensal.map(d=>({dt:mesData(d.periodo),fat:d.faturamento})), x=>x.dt, x=>x.fat, '#1f9d6b', true);
+    document.getElementById('cm-mes').innerHTML=faturamentoChart(comercialMensal);
     document.getElementById('cm-clientes').innerHTML=barsMoneyHTML(mapaParaArr(mC,8));
     document.getElementById('cm-produtos').innerHTML=barsMoneyHTML(mapaParaArr(mP,8));
     document.getElementById('cm-rep-mais').innerHTML=barsMoneyHTML(mapaParaArr(mRep,8),'Sem representantes no período.');
