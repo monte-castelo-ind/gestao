@@ -361,7 +361,7 @@
         <div class="card" style="margin-top:16px;"><div class="card-title">Faturamento por mês</div><div class="card-sub">Últimos 12 meses · valor, ano anterior e previsão</div><div id="cm-mes"></div></div>
         <div class="grid cols-2" style="margin-top:16px;">
           <div class="card"><div class="card-title">Faturamento por dia da semana</div><div class="card-sub">Total no período</div><div id="cm-dow"></div></div>
-          <div class="card"><div class="card-title">Top produtos por volume</div><div class="card-sub">No período · em unidades</div><div id="cm-qtd"></div></div>
+          <div class="card"><div class="card-title">Por região/rota</div><div class="card-sub">No período</div><div id="cm-regioes"></div></div>
         </div>
         <div class="grid cols-2" style="margin-top:16px;">
           <div class="card"><div class="card-title">Top clientes</div><div class="card-sub">No período · por faturamento</div><div id="cm-clientes"></div></div>
@@ -369,10 +369,6 @@
         </div>
         <div class="grid cols-2" style="margin-top:16px;">
           <div class="card"><div class="card-title">Representantes · mais venderam</div><div class="card-sub">No período · por faturamento</div><div id="cm-rep-mais"></div></div>
-          <div class="card"><div class="card-title">Representantes · menos venderam</div><div class="card-sub">No período · quem menos faturou</div><div id="cm-rep-menos"></div></div>
-        </div>
-        <div class="grid cols-2" style="margin-top:16px;">
-          <div class="card"><div class="card-title">Por região/rota</div><div class="card-sub">No período</div><div id="cm-regioes"></div></div>
           <div class="card"><div class="card-title">Vendas por tipo de produto</div><div class="card-sub">No período · por faturamento</div><div id="cm-tipos"></div></div>
         </div>
       </div>
@@ -757,7 +753,6 @@ function render(){
     document.getElementById('cm-clientes').innerHTML=rankingHTML(mapaParaArr(mC,8), fmtMoney);
     document.getElementById('cm-produtos').innerHTML=lollipopHTML(mapaParaArr(mP,8), fmtMoney);
     document.getElementById('cm-rep-mais').innerHTML=rankingHTML(mapaParaArr(mRep,8), fmtMoney);
-    document.getElementById('cm-rep-menos').innerHTML=rankingHTML(mapaParaArrAsc(mRep,8), fmtMoney, true);
     document.getElementById('cm-regioes').innerHTML=barsMoneyHTML(mapaParaArr(mR,8));
     const totalTipo=Object.keys(mTipo).reduce((a,k)=>a+mTipo[k],0);
     document.getElementById('cm-tipos').innerHTML=donutMoneyHTML(mapaParaDonut(mTipo,7), totalTipo, 'faturamento');
@@ -775,9 +770,6 @@ function render(){
     // item 9: faturamento por dia da semana
     const _dow={}; docs.forEach(d=>mergeMapa(_dow,d.porDiaSemana)); const _DIAS=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
     document.getElementById('cm-dow').innerHTML=colunasHTML(_DIAS.map((nm,i)=>({nome:nm,val:_dow[String(i)]||0})), fmtMoneyCompact);
-    // item 6: top produtos por volume
-    const _mQtd={}; docs.forEach(d=>mergeMapa(_mQtd,d.produtosQtd));
-    document.getElementById('cm-qtd').innerHTML=lollipopHTML(mapaParaArr(_mQtd,8), v=>Math.round(v).toLocaleString('pt-BR')+' un');
   }
   const fmt=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
   document.getElementById('pg-sub').textContent = periodo==='tudo' ? 'Todo o período' : (fmt(r.de)+' – '+fmt(r.ate));
