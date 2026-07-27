@@ -142,6 +142,8 @@
   .nav-sub { margin:2px 0 4px 14px; padding-left:6px; border-left:1.5px solid var(--border); }
   .nav-sub .nav-item { font-size:13.5px; }
   .chip-sel{ padding:6px 10px; font-weight:600; }
+  .dd{ position:relative; display:inline-block; }
+  .dd-panel{ position:absolute; top:calc(100% + 6px); left:0; z-index:60; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px; box-shadow:var(--shadow); display:flex; align-items:center; gap:8px; white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -209,14 +211,24 @@
       </div>
     </div>
     <div class="chips" id="chips">
-      <button class="chip" data-p="7d" onclick="setPeriodo('7d')">7 dias</button>
-      <button class="chip active" data-p="30d" onclick="setPeriodo('30d')">30 dias</button>
-      <button class="chip" data-p="90d" onclick="setPeriodo('90d')">90 dias</button>
-      <button class="chip" data-p="mes" onclick="setPeriodo('mes')">Este mês</button>
-      <button class="chip" data-p="tudo" onclick="setPeriodo('tudo')">Tudo</button>
+      <button class="chip active" data-p="mes" onclick="setPeriodo('mes')">Este mês</button>
+      <button class="chip" data-p="mesant" onclick="setPeriodo('mesant')">Mês anterior</button>
+      <select class="chip chip-sel" id="sel-semana" style="width:120px;" onchange="setSemana()"></select>
       <span style="width:1px;height:22px;background:var(--border);margin:2px 4px;"></span>
       <select class="chip chip-sel" id="sel-mes" onchange="setMesAno()"></select>
       <select class="chip chip-sel" id="sel-ano" onchange="setMesAno()"></select>
+      <span style="width:1px;height:22px;background:var(--border);margin:2px 4px;"></span>
+      <span class="dd">
+        <button class="chip" id="range-btn" onclick="togglePeriodo()">Período ▾</button>
+        <span class="dd-panel" id="range-box" style="display:none;">
+          <span style="font-size:12px;color:var(--muted);">De</span>
+          <input type="date" id="range-de" class="chip chip-sel" style="min-width:140px;color:var(--text);">
+          <span style="font-size:12px;color:var(--muted);">até</span>
+          <input type="date" id="range-ate" class="chip chip-sel" style="min-width:140px;color:var(--text);">
+          <button class="chip" onclick="setRange()">Aplicar</button>
+          <button class="chip" id="range-clear" onclick="limparRange()" style="display:none;">✕ limpar</button>
+        </span>
+      </span>
     </div>
 
     <!-- ===== VISÃO GERAL ===== -->
@@ -397,7 +409,7 @@ const configProducao = { apiKey:"AIzaSyDY5ma_NbCmZ2dyXUjKm6GZQ3ibhwgcdmI", authD
 const appProd = initializeApp(configProducao, 'producao');
 const dbProd = getFirestore(appProd);
 
-let periodo='30d', pagina='overview', filtroAno='', filtroMes='';
+let periodo='mes', pagina='overview', filtroAno='', filtroMes='', filtroDe='', filtroAte='', filtroSemana='';
 let estoque=[], chamados=[], registros=[], prodCatalog={}, presencas=[], quadraRegistros=[], comercialMensal=[], comercialDiario=[];
 let subE=null, subC=null, subR=null, subCat=null, subPres=null, subCfg=null, subQuad=null, subCM=null, subCD=null;
 let sessaoEmail='', currentRole=null, currentAtivo=false;
@@ -409,7 +421,7 @@ let config = { conf:{metaPadrao:META_CONF_KG,metas:{}}, panif:{metaPadrao:META_C
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function parseBR(s){ if(!s||typeof s!=='string')return null; const p=s.split('/'); if(p.length!==3)return null; const d=+p[0],m=+p[1],y=+p[2]; if(!d||!m||!y)return null; return new Date(y,m-1,d,12,0,0); }
 function conclusaoDe(e){ let d=parseBR(e.dataConclusao); if(d)return d; if(Array.isArray(e.historico)){ for(let i=e.historico.length-1;i>=0;i--){ if(/conclu/i.test(e.historico[i].acao||'')){ const hd=parseBR(e.historico[i].data); if(hd)return hd; } } } if(e.status==='saiu'){ const ds=parseBR(e.dataSaida); if(ds)return ds; } return null; }
-function range(){ if(filtroAno!==''){ const yy=+filtroAno; if(filtroMes!==''){ const mo=+filtroMes; return {de:new Date(yy,mo,1,0,0,0), ate:new Date(yy,mo+1,0,23,59,59)}; } return {de:new Date(yy,0,1,0,0,0), ate:new Date(yy,11,31,23,59,59)}; } let ate=new Date(); ate.setHours(23,59,59,999); let de=new Date(2000,0,1); if(periodo==='7d'){de=new Date();de.setDate(de.getDate()-6);de.setHours(0,0,0,0);} else if(periodo==='30d'){de=new Date();de.setDate(de.getDate()-29);de.setHours(0,0,0,0);} else if(periodo==='90d'){de=new Date();de.setDate(de.getDate()-89);de.setHours(0,0,0,0);} else if(periodo==='mes'){const n=new Date();de=new Date(n.getFullYear(),n.getMonth(),1,0,0,0);} return {de,ate}; }
+function range(){ if(filtroDe&&filtroAte){ const de=new Date(+filtroDe.slice(0,4),+filtroDe.slice(5,7)-1,+filtroDe.slice(8,10),0,0,0); const ate=new Date(+filtroAte.slice(0,4),+filtroAte.slice(5,7)-1,+filtroAte.slice(8,10),23,59,59); return {de,ate}; } if(filtroSemana){ const mo=new Date(+filtroSemana.slice(0,4),+filtroSemana.slice(5,7)-1,+filtroSemana.slice(8,10),0,0,0); const su=new Date(mo); su.setDate(mo.getDate()+6); su.setHours(23,59,59,999); return {de:mo,ate:su}; } if(filtroAno!==''){ const yy=+filtroAno; if(filtroMes!==''){ const mo=+filtroMes; return {de:new Date(yy,mo,1,0,0,0), ate:new Date(yy,mo+1,0,23,59,59)}; } return {de:new Date(yy,0,1,0,0,0), ate:new Date(yy,11,31,23,59,59)}; } let ate=new Date(); ate.setHours(23,59,59,999); let de=new Date(2000,0,1); if(periodo==='7d'){de=new Date();de.setDate(de.getDate()-6);de.setHours(0,0,0,0);} else if(periodo==='30d'){de=new Date();de.setDate(de.getDate()-29);de.setHours(0,0,0,0);} else if(periodo==='90d'){de=new Date();de.setDate(de.getDate()-89);de.setHours(0,0,0,0);} else if(periodo==='mes'){const n=new Date();de=new Date(n.getFullYear(),n.getMonth(),1,0,0,0);} else if(periodo==='mesant'){const n=new Date();de=new Date(n.getFullYear(),n.getMonth()-1,1,0,0,0);ate=new Date(n.getFullYear(),n.getMonth(),0,23,59,59);} return {de,ate}; }
 function tempoMedio(itens){ const t=[]; itens.forEach(e=>{const ent=parseBR(e.dataEntrada||e.dataAbertura),con=conclusaoDe(e); if(ent&&con){const d=Math.round((con-ent)/86400000); if(d>=0)t.push(d);}}); if(!t.length)return '–'; return (t.reduce((a,b)=>a+b,0)/t.length).toFixed(1).replace('.',',')+'d'; }
 function agrupar(itens,chave){ const m={}; itens.forEach(e=>{const k=e[chave]||'—'; m[k]=(m[k]||0)+1;}); return Object.keys(m).map(k=>({nome:k,val:m[k]})).sort((a,b)=>b.val-a.val); }
 function agruparSoma(itens,chave,valfn){ const m={}; itens.forEach(e=>{const k=e[chave]||'—'; m[k]=(m[k]||0)+(valfn(e)||0);}); return Object.keys(m).map(k=>({nome:k,val:Math.round(m[k])})).sort((a,b)=>b.val-a.val); }
@@ -619,7 +631,8 @@ function tabelaReg(list, modo){
 
 function render(){
   const r=range();
-  document.querySelectorAll('#chips button.chip').forEach(c=>c.classList.toggle('active',filtroAno===''&&c.dataset.p===periodo));
+  document.querySelectorAll('#chips button.chip[data-p]').forEach(c=>c.classList.toggle('active',!filtroDe&&!filtroAte&&!filtroSemana&&filtroAno===''&&c.dataset.p===periodo));
+  var _rc=document.getElementById('range-clear'); if(_rc) _rc.style.display=(filtroDe&&filtroAte)?'':'none';
   const noP=dt=>dt&&dt>=r.de&&dt<=r.ate;
 
   const cRef=estoque.filter(e=>noP(conclusaoDe(e)));
@@ -782,6 +795,8 @@ function render(){
 const TITLES={overview:['Visão Geral','Consolidado'],comodato:['Manutenção Comodato','Equipamentos'],predial:['Manutenção Predial','Chamados'],panificacao:['Panificação','Produção · quadra'],confeitaria:['Confeitaria','Produção'],embalacao:['Embalação','Produção · embalagem'],config:['Configurações','Ajustes do painel'],comercial:['Comercial','Faturamento (ERP)']};
 window.nav=function(p){
   pagina=p;
+  periodo='mes'; filtroAno=''; filtroMes=''; filtroDe=''; filtroAte=''; filtroSemana='';
+  (function(){ var sa=document.getElementById('sel-ano'),sm=document.getElementById('sel-mes'),ss=document.getElementById('sel-semana'),rd=document.getElementById('range-de'),ra=document.getElementById('range-ate'),bx=document.getElementById('range-box'); if(sa)sa.value=''; if(sm)sm.value=''; if(ss)ss.value=''; if(rd)rd.value=''; if(ra)ra.value=''; if(bx)bx.style.display='none'; })();
   if(['panificacao','confeitaria','embalacao'].indexOf(p)>=0){ const s=document.getElementById('prod-sub'); if(s){ s.style.display='block'; document.getElementById('prod-chevron').textContent='▾'; } }
   document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===p));
   document.querySelectorAll('.page[id^="page-"]').forEach(pg=>pg.classList.remove('active'));
@@ -793,9 +808,14 @@ window.nav=function(p){
   render();
 };
 window.toggleProducao=function(){ const s=document.getElementById('prod-sub'); const open=s.style.display!=='none'; s.style.display=open?'none':'block'; document.getElementById('prod-chevron').textContent=open?'▸':'▾'; };
-window.setPeriodo=function(p){ periodo=p; filtroAno=''; filtroMes=''; var sa=document.getElementById('sel-ano'),sm=document.getElementById('sel-mes'); if(sa)sa.value=''; if(sm)sm.value=''; render(); };
-window.setMesAno=function(){ filtroAno=document.getElementById('sel-ano').value; filtroMes=document.getElementById('sel-mes').value; render(); };
-(function(){ var sa=document.getElementById('sel-ano'); if(sa){ var y=new Date().getFullYear(),o='<option value="">Ano…</option>'; for(var k=y;k>=y-3;k--) o+='<option value="'+k+'">'+k+'</option>'; sa.innerHTML=o; } var sm=document.getElementById('sel-mes'); if(sm){ var o2='<option value="">Ano todo</option>'; MESES.forEach(function(mm,ii){o2+='<option value="'+ii+'">'+mm+'</option>';}); sm.innerHTML=o2; } })();
+function _limparSelsRange(){ var sa=document.getElementById('sel-ano'),sm=document.getElementById('sel-mes'),ss=document.getElementById('sel-semana'),rd=document.getElementById('range-de'),ra=document.getElementById('range-ate'); if(sa)sa.value=''; if(sm)sm.value=''; if(ss)ss.value=''; if(rd)rd.value=''; if(ra)ra.value=''; }
+window.setPeriodo=function(p){ periodo=p; filtroAno=''; filtroMes=''; filtroDe=''; filtroAte=''; filtroSemana=''; _limparSelsRange(); render(); };
+window.setMesAno=function(){ filtroAno=document.getElementById('sel-ano').value; filtroMes=document.getElementById('sel-mes').value; filtroDe=''; filtroAte=''; filtroSemana=''; var ss=document.getElementById('sel-semana'),rd=document.getElementById('range-de'),ra=document.getElementById('range-ate'); if(ss)ss.value=''; if(rd)rd.value=''; if(ra)ra.value=''; render(); };
+window.setSemana=function(){ var v=document.getElementById('sel-semana').value; if(!v){ filtroSemana=''; render(); return; } filtroSemana=v; periodo=''; filtroAno=''; filtroMes=''; filtroDe=''; filtroAte=''; var sa=document.getElementById('sel-ano'),sm=document.getElementById('sel-mes'),rd=document.getElementById('range-de'),ra=document.getElementById('range-ate'); if(sa)sa.value=''; if(sm)sm.value=''; if(rd)rd.value=''; if(ra)ra.value=''; render(); };
+window.togglePeriodo=function(){ var b=document.getElementById('range-box'); if(b) b.style.display = b.style.display==='none' ? 'flex' : 'none'; };
+window.setRange=function(){ var de=document.getElementById('range-de').value, ate=document.getElementById('range-ate').value; if(!de||!ate) return; if(de>ate){ var t=de; de=ate; ate=t; } filtroDe=de; filtroAte=ate; periodo=''; filtroAno=''; filtroMes=''; filtroSemana=''; var sa=document.getElementById('sel-ano'),sm=document.getElementById('sel-mes'),ss=document.getElementById('sel-semana'); if(sa)sa.value=''; if(sm)sm.value=''; if(ss)ss.value=''; render(); };
+window.limparRange=function(){ filtroDe=''; filtroAte=''; var rd=document.getElementById('range-de'),ra=document.getElementById('range-ate'); if(rd)rd.value=''; if(ra)ra.value=''; periodo='mes'; render(); };
+(function(){ var sa=document.getElementById('sel-ano'); if(sa){ var y=new Date().getFullYear(),o='<option value="">Ano</option>'; for(var k=y;k>=y-3;k--) o+='<option value="'+k+'">'+k+'</option>'; sa.innerHTML=o; } var sm=document.getElementById('sel-mes'); if(sm){ var o2='<option value="">Mês</option>'; MESES.forEach(function(mm,ii){o2+='<option value="'+ii+'">'+mm+'</option>';}); sm.innerHTML=o2; } var ss=document.getElementById('sel-semana'); if(ss){ function p2(n){return (n<10?'0':'')+n;} var base=new Date(); base.setHours(0,0,0,0); var off=(base.getDay()+6)%7; base.setDate(base.getDate()-off); var o3='<option value="">Semana</option>'; for(var w=0;w<8;w++){ var mo=new Date(base); mo.setDate(base.getDate()-7*w); var su=new Date(mo); su.setDate(mo.getDate()+6); var val=mo.getFullYear()+'-'+p2(mo.getMonth()+1)+'-'+p2(mo.getDate()); var lbl=p2(mo.getDate())+'/'+p2(mo.getMonth()+1)+'–'+p2(su.getDate())+'/'+p2(su.getMonth()+1); o3+='<option value="'+val+'">'+lbl+'</option>'; } ss.innerHTML=o3; } })();
 window.openSidebar=function(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('backdrop').classList.add('show'); };
 window.closeSidebar=function(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('backdrop').classList.remove('show'); };
 window.toggleTheme=function(){
