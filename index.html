@@ -156,6 +156,9 @@
     <input id="authEmail" type="email" autocomplete="username" placeholder="E-mail">
     <input id="authSenha" type="password" autocomplete="current-password" placeholder="Senha">
     <div id="authErro"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);cursor:pointer;margin:2px 0 12px;">
+      <input type="checkbox" id="authLembrar" checked style="accent-color:var(--primary);width:16px;height:16px;"> Manter conectado
+    </label>
     <button id="authBtn">Entrar</button>
   </div>
 </div>
@@ -379,7 +382,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const configComodato = { apiKey:"AIzaSyCH_t074MvkJn-qVMvCtLfEMaQHf_e_d7M", authDomain:"manutencao-comodato.firebaseapp.com", projectId:"manutencao-comodato", storageBucket:"manutencao-comodato.firebasestorage.app", messagingSenderId:"89709396101", appId:"1:89709396101:web:22ee225ffa806e07a269ec" };
 const configPredial  = { apiKey:"AIzaSyCsV4z3OCBlohH5GOymaM6-DYp-0H-_kUc", authDomain:"manutencao-predial-62fa5.firebaseapp.com", projectId:"manutencao-predial-62fa5", storageBucket:"manutencao-predial-62fa5.firebasestorage.app", messagingSenderId:"368066193801", appId:"1:368066193801:web:b448a6bbcb17b045fed958" };
@@ -843,11 +846,18 @@ onAuthStateChanged(authP, puser=>{
   }
 });
 async function entrar(){ const em=(emailEl.value||'').trim(), pw=(senhaEl.value||'').trim(); erro.textContent=''; if(!em||!pw){erro.textContent='Preencha e-mail e senha';return;} btn.disabled=true;
+  const lembrarEl=document.getElementById('authLembrar');
+  const lembrar = lembrarEl ? lembrarEl.checked : true;
+  const persist = lembrar ? browserLocalPersistence : browserSessionPersistence;
   try{
+    await setPersistence(auth, persist);
+    try{ await setPersistence(authP, persist); }catch(ep){ console.warn('Persistência Predial:', ep.code||ep.message); }
     await signInWithEmailAndPassword(auth,em,pw);
+    try{ if(lembrar){ localStorage.setItem('mc_last_email', em); } else { localStorage.removeItem('mc_last_email'); } }catch(e){}
     try{ await signInWithEmailAndPassword(authP,em,pw); }catch(e2){ console.warn('Predial login falhou:', e2.code||e2.message); }
   }catch(e){ console.log('login:',e.code); erro.textContent=e.code||'Erro ao entrar'; btn.disabled=false; }
 }
+try{ const le=localStorage.getItem('mc_last_email'); if(le){ emailEl.value=le; senhaEl.focus(); } }catch(e){}
 btn.addEventListener('click',entrar);
 [emailEl,senhaEl].forEach(el=>el.addEventListener('keydown',e=>{ if(e.key==='Enter')entrar(); }));
 window.sairApp=()=>Promise.allSettled([signOut(auth),signOut(authP)]).then(()=>location.reload());
