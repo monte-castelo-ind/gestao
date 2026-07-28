@@ -504,7 +504,7 @@ function lollipopHTML(itens, fmtFn){
   if(!itens.length) return '<div class="empty">Sem dados no período.</div>';
   const max=Math.max.apply(null,itens.map(x=>x.val).concat([1]));
   return '<div style="margin-top:6px;">'+itens.map((it,i)=>{ const cor=CORES[i%CORES.length], w=Math.max(1,it.val/max*100);
-    return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;"><span style="flex:0 0 38%;max-width:38%;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(it.nome)+'</span><div style="flex:1;position:relative;height:14px;"><div style="position:absolute;top:6px;left:0;height:2px;width:'+w+'%;background:'+cor+'66;border-radius:2px;"></div><div style="position:absolute;top:2px;left:calc('+w+'% - 5px);width:10px;height:10px;border-radius:50%;background:'+cor+';box-shadow:0 0 0 3px '+cor+'22;"></div></div><span style="flex:0 0 96px;text-align:right;font-size:12px;font-weight:700;white-space:nowrap;">'+(fmtFn?fmtFn(it.val):it.val)+'</span></div>'; }).join('')+'</div>';
+    return '<div class="bar-row"><div class="bar-head"><span class="legend-name">'+esc(it.nome)+'</span><span class="legend-val">'+(fmtFn?fmtFn(it.val):it.val)+'</span></div><div style="position:relative;height:12px;"><div style="position:absolute;top:5px;left:0;height:3px;width:'+w+'%;background:'+cor+'66;border-radius:2px;"></div><div style="position:absolute;top:2px;left:calc('+w+'% - 5px);width:10px;height:10px;border-radius:50%;background:'+cor+';box-shadow:0 0 0 3px '+cor+'22;"></div></div></div>'; }).join('')+'</div>';
 }
 function rankingHTML(itens, fmtFn, neutro){
   if(!itens.length) return '<div class="empty">Sem dados no período.</div>';
