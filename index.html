@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR" data-theme="light">
 <head>
+<script>try{var _t=localStorage.getItem('mc_gestao_theme');if(_t==='dark'||_t==='light')document.documentElement.setAttribute('data-theme',_t);}catch(e){}</script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
@@ -818,15 +819,19 @@ window.limparRange=function(){ filtroDe=''; filtroAte=''; var rd=document.getEle
 (function(){ var sa=document.getElementById('sel-ano'); if(sa){ var y=new Date().getFullYear(),o='<option value="">Ano</option>'; for(var k=y;k>=y-3;k--) o+='<option value="'+k+'">'+k+'</option>'; sa.innerHTML=o; } var sm=document.getElementById('sel-mes'); if(sm){ var o2='<option value="">Mês</option>'; MESES.forEach(function(mm,ii){o2+='<option value="'+ii+'">'+mm+'</option>';}); sm.innerHTML=o2; } var ss=document.getElementById('sel-semana'); if(ss){ function p2(n){return (n<10?'0':'')+n;} var base=new Date(); base.setHours(0,0,0,0); var off=(base.getDay()+6)%7; base.setDate(base.getDate()-off); var o3='<option value="">Semana</option>'; for(var w=0;w<8;w++){ var mo=new Date(base); mo.setDate(base.getDate()-7*w); var su=new Date(mo); su.setDate(mo.getDate()+6); var val=mo.getFullYear()+'-'+p2(mo.getMonth()+1)+'-'+p2(mo.getDate()); var lbl=p2(mo.getDate())+'/'+p2(mo.getMonth()+1)+'–'+p2(su.getDate())+'/'+p2(su.getMonth()+1); o3+='<option value="'+val+'">'+lbl+'</option>'; } ss.innerHTML=o3; } })();
 window.openSidebar=function(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('backdrop').classList.add('show'); };
 window.closeSidebar=function(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('backdrop').classList.remove('show'); };
-window.toggleTheme=function(){
-  const cur=document.documentElement.getAttribute('data-theme');
-  const novo=cur==='dark'?'light':'dark';
+function applyTheme(novo){
   document.documentElement.setAttribute('data-theme',novo);
   const dark=novo==='dark';
-  document.getElementById('theme-ico').textContent=dark?'☀️':'🌙';
-  document.getElementById('theme-txt').textContent=dark?'Tema claro':'Tema escuro';
-  document.getElementById('theme-btn').textContent=dark?'☀️':'🌙';
+  var ico=document.getElementById('theme-ico'); if(ico) ico.textContent=dark?'☀️':'🌙';
+  var txt=document.getElementById('theme-txt'); if(txt) txt.textContent=dark?'Tema claro':'Tema escuro';
+  var btn=document.getElementById('theme-btn'); if(btn) btn.textContent=dark?'☀️':'🌙';
+  try{ localStorage.setItem('mc_gestao_theme', novo); }catch(e){}
+}
+window.toggleTheme=function(){
+  const cur=document.documentElement.getAttribute('data-theme');
+  applyTheme(cur==='dark'?'light':'dark');
 };
+(function(){ try{ var t=localStorage.getItem('mc_gestao_theme'); if(t==='dark'||t==='light') applyTheme(t); }catch(e){} })();
 
 // SESSÃO
 function iniciarSessao(user){
