@@ -439,41 +439,21 @@ window.relatorioCompleto=function(){
   var R=window.__relCom;
   if(!R){ alert('Abra o painel Comercial para gerar o relatório.'); return; }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  function secao(titulo, mapa){
-    var arr=mapaParaArr(mapa, 999999);
-    var total=arr.reduce(function(a,x){return a+x.val;},0)||1, acc=0;
-    var rows=arr.map(function(x,i){ acc+=x.val; var pct=x.val/total*100, cum=acc/total*100; return '<tr><td class="r">'+(i+1)+'</td><td>'+esc(x.nome)+'</td><td class="v">'+fmtMoney(x.val)+'</td><td class="r">'+pct.toFixed(1).replace('.',',')+'%</td><td class="r">'+cum.toFixed(1).replace('.',',')+'%</td></tr>'; }).join('');
-    return '<section><h2>'+esc(titulo)+' <span class="cnt">'+arr.length+' itens</span></h2><table><thead><tr><th class="r">#</th><th>Nome</th><th class="v">Faturamento</th><th class="r">%</th><th class="r">% acum.</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
-  }
-  var kpis='<div class="kpis">'+
-    '<div class="kpi"><span>Faturamento</span><b>'+fmtMoney(R.fat)+'</b></div>'+
-    '<div class="kpi"><span>Notas fiscais</span><b>'+(R.notas||0).toLocaleString('pt-BR')+'</b></div>'+
-    '<div class="kpi"><span>Ticket médio</span><b>'+fmtMoney(R.ticket||0)+'</b></div>'+
-    '<div class="kpi"><span>Clientes distintos</span><b>'+(R.clientesDistintos||0).toLocaleString('pt-BR')+'</b></div></div>';
-  var corpo=secao('Clientes',R.mC)+secao('Produtos',R.mP)+secao('Representantes',R.mRep)+secao('Região / Rota',R.mR)+secao('Tipos de produto',R.mTipo)+secao('Vendedores',R.mV);
+  var prod=mapaParaArr(R.mP,999999).map(function(x){ return {nome:esc(x.nome), val:x.val, money:fmtMoney(x.val)}; });
+  var dataJson=JSON.stringify(prod);
   var gerado=new Date().toLocaleString('pt-BR');
-  var css='body{font-family:Arial,Helvetica,sans-serif;color:#1d2433;margin:0;background:#f4f5f7;}'+
-    '.wrap{max-width:900px;margin:0 auto;padding:24px;}'+
-    'header.rp{background:#151515;color:#fff;padding:20px 24px;border-radius:12px;margin-bottom:18px;}'+
-    'header.rp h1{margin:0;font-size:20px;}header.rp h1 span{color:#F26B1F;}'+
-    'header.rp .meta{font-size:12px;color:#b9b4ab;margin-top:6px;}'+
-    '.kpis{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;}'+
-    '.kpi{flex:1;min-width:160px;background:#fff;border:1px solid #e4e7ec;border-radius:10px;padding:12px 14px;}'+
-    '.kpi span{display:block;font-size:12px;color:#667085;}.kpi b{font-size:20px;}'+
-    'section{background:#fff;border:1px solid #e4e7ec;border-radius:10px;padding:14px 16px;margin-bottom:16px;}'+
-    'h2{font-size:15px;margin:0 0 10px;}h2 .cnt{font-size:12px;color:#667085;font-weight:normal;}'+
-    'table{width:100%;border-collapse:collapse;font-size:13px;}'+
-    'th,td{padding:6px 8px;border-bottom:1px solid #eef0f3;text-align:left;}'+
-    'th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#667085;}'+
-    'td.v,th.v{text-align:right;font-variant-numeric:tabular-nums;}'+
-    'td.r,th.r{text-align:right;color:#667085;}td.r:first-child,th.r:first-child{text-align:left;}'+
-    '.toolbar{position:sticky;top:0;background:#f4f5f7;padding:12px 0;}'+
-    '.toolbar button{background:#F26B1F;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;}'+
-    '@media print{.toolbar{display:none;}body{background:#fff;}section,.kpi{border-color:#ccc;}}';
-  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório Comercial · Monte Castelo</title><style>'+css+'</style></head><body><div class="wrap">'+
-    '<div class="toolbar"><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>'+
-    '<header class="rp"><h1>Monte <span>Castelo</span> · Relatório Comercial</h1><div class="meta">Período: '+esc(R.periodo)+' &nbsp;·&nbsp; Gerado em '+esc(gerado)+'</div></header>'+
-    kpis+corpo+'</div></body></html>';
+  var periodo=esc(R.periodo);
+  var css=`body{font-family:Arial,Helvetica,sans-serif;color:#1d2433;margin:0;background:#f4f5f7;}.wrap{max-width:900px;margin:0 auto;padding:24px;}header.rp{background:#151515;color:#fff;padding:20px 24px;border-radius:12px;margin-bottom:16px;}header.rp h1{margin:0;font-size:20px;}header.rp h1 span{color:#F26B1F;}header.rp .meta{font-size:12px;color:#b9b4ab;margin-top:6px;}.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}.toolbar .lbl{font-size:13px;color:#667085;margin-right:2px;}.toolbar button{background:#fff;border:1px solid #d0d5dd;color:#344054;border-radius:8px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;}.toolbar button.on{background:#F26B1F;border-color:#F26B1F;color:#fff;}section{background:#fff;border:1px solid #e4e7ec;border-radius:10px;padding:14px 16px;}h2{font-size:15px;margin:0 0 10px;}h2 .cnt{font-size:12px;color:#667085;font-weight:normal;}table{width:100%;border-collapse:collapse;font-size:13px;}th,td{padding:6px 8px;border-bottom:1px solid #eef0f3;text-align:left;}th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#667085;}td.v,th.v{text-align:right;font-variant-numeric:tabular-nums;}td.r,th.r{text-align:right;color:#667085;}td.r:first-child,th.r:first-child{text-align:left;}`;
+  var html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Produtos · Monte Castelo</title><style>${css}</style></head><body><div class="wrap">`
+    +`<header class="rp"><h1>Monte <span>Castelo</span> · Produtos</h1><div class="meta">Período: ${periodo} &nbsp;·&nbsp; Gerado em ${gerado}</div></header>`
+    +`<div class="toolbar"><span class="lbl">Ordenar:</span><button data-o="desc" class="on">Maior → menor</button><button data-o="asc">Menor → maior</button><button data-o="az">A → Z</button></div>`
+    +`<section><h2>Produtos <span class="cnt" id="cnt"></span></h2><table><thead><tr><th class="r">#</th><th>Produto</th><th class="v">Faturamento</th><th class="r">%</th><th class="r">% acum.</th></tr></thead><tbody id="tb"></tbody></table></section>`
+    +`</div><script>`
+    +`var DATA=${dataJson};var TOTAL=DATA.reduce(function(a,x){return a+x.val;},0)||1;`
+    +`function fmtPct(n){return n.toFixed(1).replace('.',',')+'%';}`
+    +`function render(o){var arr=DATA.slice();if(o==='asc'){arr.sort(function(a,b){return a.val-b.val;});}else if(o==='az'){arr.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR');});}else{arr.sort(function(a,b){return b.val-a.val;});}var acc=0;document.getElementById('tb').innerHTML=arr.map(function(x,i){acc+=x.val;return '<tr><td class="r">'+(i+1)+'</td><td>'+x.nome+'</td><td class="v">'+x.money+'</td><td class="r">'+fmtPct(x.val/TOTAL*100)+'</td><td class="r">'+fmtPct(acc/TOTAL*100)+'</td></tr>';}).join('');var bs=document.querySelectorAll('.toolbar button');for(var k=0;k<bs.length;k++){bs[k].className=(bs[k].getAttribute('data-o')===o?'on':'');}document.getElementById('cnt').textContent=arr.length+' itens';}`
+    +`var bb=document.querySelectorAll('.toolbar button');for(var k=0;k<bb.length;k++){bb[k].onclick=function(){render(this.getAttribute('data-o'));};}render('desc');`
+    +`<\/script></body></html>`;
   var w=window.open('','_blank');
   if(!w){ alert('O navegador bloqueou a nova aba. Permita pop-ups para este site.'); return; }
   w.document.open(); w.document.write(html); w.document.close();
