@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function meuDoc() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+    function logado() { return request.auth != null; }
+    function existeMeuDoc() {
+      return logado() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+    function ativo() { return existeMeuDoc() && meuDoc().ativo == true; }
+    function temPapel(papeis) { return ativo() && meuDoc().role in papeis; }
+    function ehAdmin() { return temPapel(['admin']); }
+    function podeEscrever() { return temPapel(['admin','operador']); }
+
+    // ===== NOVO: acesso por app =====
+    // Antes, ativo() abria tudo. Agora cada app tem a sua flag no documento
+    // de usuarios, e ativo() volta a significar apenas "trabalha aqui".
+    //
+    // Usa .get(campo, false): se o campo NAO existir no documento, devolve
+    // false em vez de estourar. Sem isso, um usuario sem a flag dependeria
+    // do fato de que erro em regra vira negacao - funciona, mas por acidente.
+    function flag(nome)     { return ativo() && meuDoc().get(nome, false) == true; }
+    function podeGestao()   { return flag('gestao'); }
+    function podePlanner()  { return flag('planner'); }
+    function plannerAdmin() { return podePlanner() && meuDoc().get('plannerAdmin', false) == true; }
+
+    // ===== inalterado =====
+    match /usuarios/{uid} {
+      allow get: if logado() && (request.auth.uid == uid || ehAdmin());
+      allow list: if ehAdmin();
+      allow create: if logado() && request.auth.uid == uid
+                    && request.resource.data.ativo == false
+                    && request.resource.data.role == 'leitura';
+      allow update, delete: if ehAdmin();
+    }
+
+    match /equipamentosBase/{id}    { allow read: if ativo(); allow write: if podeEscrever(); }
+    match /equipamentosEstoque/{id} { allow read: if ativo(); allow write: if podeEscrever(); }
+    match /presencas/{id}           { allow read: if ativo(); allow write: if podeEscrever(); }
+
+    // ===== GESTAO: era ativo(), agora exige a flag gestao =====
+    match /configGestao/{id} {
+      allow read:  if podeGestao();
+      allow write: if podeGestao() && podeEscrever();
+    }
+    match /comercialMensal/{id} { allow read: if podeGestao(); }
+    match /comercialDiario/{id} { allow read: if podeGestao(); }
+    match /comercialMeta/{id}   { allow read: if podeGestao(); }
+
+    // ===== PLANNER: era "read, write: if ativo()" para todos =====
+    // O _config guarda setores, responsaveis e rotulos: e configuracao
+    // compartilhada, so plannerAdmin mexe. O teste do docId fica DENTRO
+    // do curinga de proposito - regras se somam com OU, entao um
+    // match /planner/_config separado nao revogaria o que o curinga concede.
+    match /planner/{docId} {
+      allow read: if podePlanner();
+      allow create, update: if (podePlanner()  && docId != '_config')
+                            || (plannerAdmin() && docId == '_config');
+      allow delete: if plannerAdmin();
+    }
+  }
+}
