@@ -1,3 +1,7 @@
+// Projeto Firebase: manutencao-comodato
+// Governa os apps: Comodato, Gestão e Planner (os três leem este mesmo banco)
+// Publicar em: Console > Firestore > Regras > Publicar
+// O Console NÃO guarda histórico de versões — este arquivo é a única cópia.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
