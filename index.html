@@ -833,7 +833,6 @@ function render(){
   // OVERVIEW
   if(pagina==='overview'){
     const _r=range();
-    const _noP=noP;
 
     // ---------- COMERCIAL ----------
     const _um=(periodo==='tudo')||(filtroAno!=='');
@@ -859,14 +858,15 @@ function render(){
     document.getElementById('ov-com-mes').innerHTML=faturamentoChart(comercialMensal);
 
     // ---------- PRODUÇÃO ----------
-    const _regTodos=registros.filter(x=>_noP(parseBR(x.data)));
+    const _regTodos=registros.filter(x=>noP(parseBR(x.data)));
     const _regPanif=_regTodos.filter(x=>x.origem==='quadra');
     const _regConf =_regTodos.filter(x=>x.origem!=='quadra');
     const _regEmb  =_regTodos.filter(x=>x.embalagem&&x.embalagem.feito);
-    const _kgTotal=sum(_regTodos,kgReg), _kgPanif=sum(_regPanif,kgReg), _kgConf=sum(_regConf,kgReg), _kgEmb=sum(_regEmb,kgReg);
+    const _somaKg=(arr)=>arr.reduce((a,x)=>a+(kgReg(x)||0),0);   // sum() e const declarado depois: nao esta em escopo aqui
+    const _kgTotal=_somaKg(_regTodos), _kgPanif=_somaKg(_regPanif), _kgConf=_somaKg(_regConf), _kgEmb=_somaKg(_regEmb);
     // Embalação não é setor paralelo: é estágio. Mede quanto do produzido saiu embalado.
     const _pctEmb=_kgTotal>0?(_kgEmb/_kgTotal*100):0;
-    const _quebra=sum(_regTodos,quebraKg), _pctQ=_kgTotal>0?(_quebra/_kgTotal*100):0;
+    const _quebra=_regTodos.reduce((a,x)=>a+(quebraKg(x)||0),0), _pctQ=_kgTotal>0?(_quebra/_kgTotal*100):0;
     const _rkg=_kgTotal>0?_fat/_kgTotal:0;
 
     document.getElementById('ov-prod-kpis').innerHTML=
