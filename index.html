@@ -54,6 +54,12 @@
   .nav-label { font-size:10.5px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); padding:6px 10px; margin-top:6px; }
   .nav-item { display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:11px; color:var(--muted); font-size:14px; font-weight:500; cursor:pointer; margin-bottom:2px; border:none; background:none; width:100%; text-align:left; font-family:inherit; }
   .nav-item:hover { background:var(--card-2); color:var(--text); }
+  .ov-faixa { margin-top:22px; padding-top:16px; border-top:1px solid var(--border); }
+  .ov-faixa:first-of-type { margin-top:18px; }
+  .ov-faixa-tit { display:flex; align-items:center; gap:9px; font-size:15px; font-weight:700; margin-bottom:12px; }
+  .ov-faixa-tit small { font-weight:400; font-size:12.5px; color:var(--muted); }
+  .ov-ir { margin-left:auto; background:none; border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:5px 10px; font-size:11.5px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .ov-ir:hover { color:var(--text); border-color:var(--primary); }
   .nav-item.active { background:var(--side-active); color:var(--side-active-text); font-weight:600; }
   .nav-item .ico { font-size:17px; width:20px; text-align:center; }
   .sidebar-foot { margin-top:auto; border-top:1px solid var(--border); padding-top:12px; }
@@ -238,16 +244,54 @@
     </div>
 
     <!-- ===== VISÃO GERAL ===== -->
+    <!-- Compilado por setor, na ordem de prioridade: Comercial > Produção > Predial > Comodato -->
     <div class="page active" id="page-overview">
       <div class="content">
+
         <div class="hero" id="ov-hero"></div>
-        <div class="grid cols-4" id="ov-kpis"></div>
-        <div class="card" style="margin-top:16px;"><div class="card-title">🏭 Produção × Vendas</div><div class="card-sub">Kg produzidos vs faturamento · no período</div><div id="ov-prodvendas"></div></div>
-        <div class="grid cols-3" style="margin-top:16px;">
-          <div class="card"><div class="card-title">Concluídos por mês</div><div class="card-sub">Comodato + Predial · últimos 6 meses</div><div id="ov-bars"></div></div>
-          <div class="card"><div class="card-title">Reformas por tipo</div><div class="card-sub">Comodato · no período</div><div id="ov-donut-c"></div></div>
-          <div class="card"><div class="card-title">Chamados por setor</div><div class="card-sub">Predial · no período</div><div id="ov-donut-p"></div></div>
+
+        <!-- ---------- 1. COMERCIAL ---------- -->
+        <div class="ov-faixa">
+          <div class="ov-faixa-tit"><span>💰</span> Comercial <small>faturamento no período</small>
+            <button class="ov-ir" onclick="nav('comercial')">ver painel →</button></div>
+          <div class="grid cols-4" id="ov-com-kpis"></div>
+          <div class="grid cols-3" style="margin-top:12px;">
+            <div class="card"><div class="card-title">Meta × Realizado</div><div class="card-sub">R$ · no período</div><div id="ov-com-meta"></div></div>
+            <div class="card" style="grid-column:span 2;"><div class="card-title">Faturamento por mês</div><div class="card-sub">12 meses · valor, ano anterior e previsão</div><div id="ov-com-mes"></div></div>
+          </div>
         </div>
+
+        <!-- ---------- 2. PRODUÇÃO ---------- -->
+        <div class="ov-faixa">
+          <div class="ov-faixa-tit"><span>🏭</span> Produção <small>Panificação · Confeitaria · Embalação</small></div>
+          <div class="grid cols-4" id="ov-prod-kpis"></div>
+          <div class="grid cols-3" style="margin-top:12px;">
+            <div class="card"><div class="card-title">Panificação</div><div class="card-sub">Meta × Realizado · kg</div><div id="ov-meta-panif"></div></div>
+            <div class="card"><div class="card-title">Confeitaria</div><div class="card-sub">Meta × Realizado · kg</div><div id="ov-meta-conf"></div></div>
+            <div class="card"><div class="card-title">Embalação</div><div class="card-sub">Meta × Realizado · kg</div><div id="ov-meta-emb"></div></div>
+          </div>
+          <div class="card" style="margin-top:12px;"><div class="card-title">Produção × Vendas</div><div class="card-sub">Kg produzidos, faturamento e retorno por kg · no período</div><div id="ov-prodvendas"></div></div>
+        </div>
+
+        <!-- ---------- 3. MANUT. PREDIAL ---------- -->
+        <div class="ov-faixa">
+          <div class="ov-faixa-tit"><span>🏢</span> Manutenção Predial <small>chamados</small>
+            <button class="ov-ir" onclick="nav('predial')">ver painel →</button></div>
+          <div class="grid cols-4" id="ov-pred-kpis"></div>
+          <div class="card" style="margin-top:12px;"><div class="card-title">Chamados por setor</div><div class="card-sub">Concluídos no período</div><div id="ov-donut-p"></div></div>
+        </div>
+
+        <!-- ---------- 4. MANUT. COMODATO ---------- -->
+        <div class="ov-faixa">
+          <div class="ov-faixa-tit"><span>🔧</span> Manutenção Comodato <small>equipamentos</small>
+            <button class="ov-ir" onclick="nav('comodato')">ver painel →</button></div>
+          <div class="grid cols-4" id="ov-como-kpis"></div>
+          <div class="grid cols-2" style="margin-top:12px;">
+            <div class="card"><div class="card-title">Reformas por tipo</div><div class="card-sub">No período</div><div id="ov-donut-c"></div></div>
+            <div class="card"><div class="card-title">Concluídos por mês</div><div class="card-sub">Comodato + Predial · últimos 6 meses</div><div id="ov-bars"></div></div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -788,24 +832,80 @@ function render(){
 
   // OVERVIEW
   if(pagina==='overview'){
+    const _r=range();
+    const _noP=noP;
+
+    // ---------- COMERCIAL ----------
+    const _um=(periodo==='tudo')||(filtroAno!=='');
+    let _docs; if(_um){ _docs=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_r.de && ini<=_r.ate; }); }
+               else   { _docs=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=_r.de && dt<=_r.ate; }); }
+    const _fat=_docs.reduce((a,d)=>a+(d.faturamento||0),0);
+    const _notas=_docs.reduce((a,d)=>a+(d.notas||0),0);
+    const _ticket=_notas?_fat/_notas:0;
+    // período anterior, do mesmo tamanho, para o comparativo
+    const _dur=_r.ate-_r.de;
+    const _antDe=new Date(_r.de.getTime()-_dur-1), _antAte=new Date(_r.de.getTime()-1);
+    let _docsAnt; if(_um){ _docsAnt=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_antDe && ini<=_antAte; }); }
+                  else   { _docsAnt=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=_antDe && dt<=_antAte; }); }
+    const _fatAnt=_docsAnt.reduce((a,d)=>a+(d.faturamento||0),0);
+    const _metaCom=metaDoPeriodo('comercial');
+
+    document.getElementById('ov-com-kpis').innerHTML=
+      kpiCard('Faturamento', fmtMoney(_fat), '💰','#16b364') +
+      kpiCard('vs período anterior', setaPct(_fatAnt,_fat), '📈','#3b6ef5') +
+      kpiCard('Notas emitidas', _notas.toLocaleString('pt-BR'), '🧾','#8b5cf6') +
+      kpiCard('Ticket médio', fmtMoney(_ticket), '🎯','#f5b013');
+    document.getElementById('ov-com-meta').innerHTML=renderMetaGauge(_fat, _metaCom, fmtMoney);
+    document.getElementById('ov-com-mes').innerHTML=faturamentoChart(comercialMensal);
+
+    // ---------- PRODUÇÃO ----------
+    const _regTodos=registros.filter(x=>_noP(parseBR(x.data)));
+    const _regPanif=_regTodos.filter(x=>x.origem==='quadra');
+    const _regConf =_regTodos.filter(x=>x.origem!=='quadra');
+    const _regEmb  =_regTodos.filter(x=>x.embalagem&&x.embalagem.feito);
+    const _kgTotal=sum(_regTodos,kgReg), _kgPanif=sum(_regPanif,kgReg), _kgConf=sum(_regConf,kgReg), _kgEmb=sum(_regEmb,kgReg);
+    // Embalação não é setor paralelo: é estágio. Mede quanto do produzido saiu embalado.
+    const _pctEmb=_kgTotal>0?(_kgEmb/_kgTotal*100):0;
+    const _quebra=sum(_regTodos,quebraKg), _pctQ=_kgTotal>0?(_quebra/_kgTotal*100):0;
+    const _rkg=_kgTotal>0?_fat/_kgTotal:0;
+
+    document.getElementById('ov-prod-kpis').innerHTML=
+      kpiCard('Kg produzidos', fmtKg(_kgTotal)+' kg', '⚖️','#1f9d6b') +
+      kpiCard('R$ por kg produzido', fmtMoney(_rkg), '💵','#3b6ef5') +
+      kpiCard('Já embalado', _pctEmb.toFixed(0)+'%', '📦','#8b5cf6') +
+      kpiCard('Quebra', _pctQ.toFixed(1).replace('.',',')+'%', '⚠️', _pctQ>=5?'#ef4444':'#f5b013');
+    document.getElementById('ov-meta-panif').innerHTML=renderMetaGauge(_kgPanif, metaDoPeriodo('panif'));
+    document.getElementById('ov-meta-conf').innerHTML=renderMetaGauge(_kgConf, metaDoPeriodo('conf'));
+    document.getElementById('ov-meta-emb').innerHTML=renderMetaGauge(_kgEmb, metaDoPeriodo('emb'));
+    document.getElementById('ov-prodvendas').innerHTML='<div style="display:flex;justify-content:space-around;text-align:center;flex-wrap:wrap;gap:16px;margin:6px 0;">'
+      +'<div><div style="font-size:26px;font-weight:800;color:#1f9d6b;">'+fmtKg(_kgTotal)+' kg</div><div style="font-size:12px;color:var(--muted);">produzidos</div></div>'
+      +'<div><div style="font-size:26px;font-weight:800;color:#f5b013;">'+fmtMoney(_fat)+'</div><div style="font-size:12px;color:var(--muted);">faturados</div></div>'
+      +'<div><div style="font-size:26px;font-weight:800;color:#3b6ef5;">'+fmtMoney(_rkg)+'</div><div style="font-size:12px;color:var(--muted);">por kg produzido</div></div></div>';
+
+    // ---------- MANUT. PREDIAL ----------
+    document.getElementById('ov-pred-kpis').innerHTML=
+      kpiCard('Abertos agora', pAb, '📨','#ef4444') +
+      kpiCard('Em andamento', pAnd, '🔄','#f5b013') +
+      kpiCard('Concluídos no período', pCon.length, '✅','#16b364') +
+      kpiCard('Tempo médio', tempoMedio(pCon), '⏱️','#8b5cf6');
+    document.getElementById('ov-donut-p').innerHTML=donutHTML(agrupar(pCon,'setor'), pCon.length, 'chamados');
+
+    // ---------- MANUT. COMODATO ----------
+    document.getElementById('ov-como-kpis').innerHTML=
+      kpiCard('Em manutenção agora', cManut, '🔧','#f5b013') +
+      kpiCard('Reformados no período', cRef.length, '✅','#16b364') +
+      kpiCard('Tempo médio', tempoMedio(cRef), '⏱️','#8b5cf6') +
+      kpiCard('Frentes abertas', cManut+pAb+pAnd, '🚧','#3b6ef5');
+    document.getElementById('ov-donut-c').innerHTML=donutHTML(agrupar(cRef,'tipo'), cRef.length, 'reformas');
+    document.getElementById('ov-bars').innerHTML=monthBars(estoque.filter(e=>conclusaoDe(e)).concat(chamados.filter(c=>c.status==='concluido')), conclusaoDe, '#3b6ef5');
+
+    // ---------- HERO: o número do negócio, não da manutenção ----------
+    const _pctMeta=_metaCom>0?(_fat/_metaCom*100):0;
     document.getElementById('ov-hero').innerHTML =
-      '<div><div class="hero-label">Concluído no período</div><div class="hero-num">'+(cRef.length+pCon.length)+'</div>'+
-      '<div class="hero-sub">'+cRef.length+' reformas · '+pCon.length+' chamados</div></div>'+
-      '<div class="hero-side"><div class="hero-side-num">'+(cManut+pAb+pAnd)+'</div><div class="hero-side-lbl">frentes abertas agora</div></div>';
-    document.getElementById('ov-kpis').innerHTML =
-      kpiCard('Frentes abertas agora', cManut+pAb+pAnd, '🚧','#3b6ef5') +
-      kpiCard('Concluído no período', cRef.length+pCon.length, '✅','#16b364') +
-      kpiCard('Comodato · em manutenção', cManut, '🔧','#f5b013') +
-      kpiCard('Predial · abertos', pAb, '📨','#ef4444');
-    document.getElementById('ov-bars').innerHTML = monthBars(estoque.filter(e=>conclusaoDe(e)).concat(chamados.filter(c=>c.status==='concluido')), conclusaoDe, '#3b6ef5');
-    document.getElementById('ov-donut-c').innerHTML = donutHTML(agrupar(cRef,'tipo'), cRef.length, 'reformas');
-    document.getElementById('ov-donut-p').innerHTML = donutHTML(agrupar(pCon,'setor'), pCon.length, 'chamados');
-    const _rOv=range();
-    const _kgOv=registros.filter(x=>{const dt=parseBR(x.data); return dt&&dt>=_rOv.de&&dt<=_rOv.ate;}).reduce((a,x)=>a+kgReg(x),0);
-    const _umOv=(periodo==='tudo')||(filtroAno!=='');
-    let _docsOv; if(_umOv){ _docsOv=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_rOv.de && ini<=_rOv.ate; }); } else { _docsOv=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=_rOv.de && dt<=_rOv.ate; }); }
-    const _fatOv=_docsOv.reduce((a,d)=>a+(d.faturamento||0),0); const _rkg=_kgOv>0?_fatOv/_kgOv:0;
-    document.getElementById('ov-prodvendas').innerHTML='<div style="display:flex;justify-content:space-around;text-align:center;flex-wrap:wrap;gap:16px;margin:6px 0;"><div><div style="font-size:26px;font-weight:800;color:#1f9d6b;">'+fmtKg(_kgOv)+' kg</div><div style="font-size:12px;color:var(--muted);">produzidos</div></div><div><div style="font-size:26px;font-weight:800;color:#f5b013;">'+fmtMoney(_fatOv)+'</div><div style="font-size:12px;color:var(--muted);">faturados</div></div><div><div style="font-size:26px;font-weight:800;color:#3b6ef5;">'+fmtMoney(_rkg)+'</div><div style="font-size:12px;color:var(--muted);">por kg produzido</div></div></div>';
+      '<div><div class="hero-label">Faturamento no período</div>'
+      +'<div class="hero-num">'+fmtMoney(_fat)+'</div>'
+      +'<div class="hero-sub">'+(_metaCom>0?(_pctMeta.toFixed(0)+'% da meta · '):'')+'vs anterior '+setaPct(_fatAnt,_fat)+'</div></div>'
+      +'<div class="hero-side"><div class="hero-side-num">'+fmtKg(_kgTotal)+' kg</div><div class="hero-side-lbl">produzidos no período</div></div>';
   }
   // COMODATO
   if(pagina==='comodato'){
