@@ -373,6 +373,9 @@
     </div>
     <div class="page" id="page-comercial">
       <div class="content">
+        <div id="cm-rel-barra" style="display:none;justify-content:flex-end;margin-bottom:12px;">
+          <button onclick="relatorioCompleto()" title="Relatório completo do período exibido" style="display:inline-flex;align-items:center;gap:7px;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;">📄 Relatório completo</button>
+        </div>
         <div class="grid cols-4" id="cm-kpis"></div>
         <div class="grid cols-3" style="margin-top:16px;">
           <div class="card"><div class="card-title">Meta × Realizado</div><div class="card-sub">R$ · no período</div><div id="cm-meta"></div></div>
@@ -386,7 +389,7 @@
         </div>
         <div class="grid cols-2" style="margin-top:16px;">
           <div class="card"><div class="card-title">Top clientes</div><div class="card-sub">No período · por faturamento</div><div id="cm-clientes"></div></div>
-          <div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;"><div><div class="card-title">Top produtos</div><div class="card-sub">No período · por faturamento</div></div><button onclick="relatorioCompleto()" title="Relatório completo" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;background:var(--primary);color:#fff;border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">📄 Relatório completo</button></div><div id="cm-produtos"></div></div>
+          <div class="card"><div class="card-title">Top produtos</div><div class="card-sub">No período · por faturamento</div><div id="cm-produtos"></div></div>
         </div>
         <div class="grid cols-2" style="margin-top:16px;">
           <div class="card"><div class="card-title">Representantes · mais venderam</div><div class="card-sub">No período · por faturamento</div><div id="cm-rep-mais"></div></div>
@@ -418,7 +421,7 @@ const dbProd = getFirestore(appProd);
 let periodo='mes', pagina='overview', filtroAno='', filtroMes='', filtroDe='', filtroAte='', filtroSemana='';
 let estoque=[], chamados=[], registros=[], prodCatalog={}, presencas=[], quadraRegistros=[], comercialMensal=[], comercialDiario=[];
 let subE=null, subC=null, subR=null, subCat=null, subPres=null, subCfg=null, subQuad=null, subCM=null, subCD=null;
-let sessaoEmail='', currentRole=null, currentAtivo=false;
+let sessaoEmail='', currentRole=null, currentAtivo=false, currentRelatorios=false;
 const CORES=['#1f9d6b','#3b6ef5','#f5b013','#12b3a6','#8b7fe8','#6bbf8f','#f08a5d','#a7c4b5'];
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const META_CONF_KG = 30000; // fallback inicial (editável na tela Configurações)
@@ -441,24 +444,109 @@ function mergeMapa(alvo, src){ if(!src) return; for(const k in src){ alvo[k]=(al
 function mapaParaArr(m, n){ return Object.keys(m).map(k=>({nome:k,val:m[k]})).sort((a,b)=>b.val-a.val).slice(0, n||8); }
 function mapaParaArrAsc(m, n){ return Object.keys(m).map(k=>({nome:k,val:m[k]})).filter(x=>x.val>0).sort((a,b)=>a.val-b.val).slice(0, n||8); }
 window.relatorioCompleto=function(){
+  if(!currentRelatorios){ alert('Relatório restrito.'); return; }
   var R=window.__relCom;
   if(!R){ alert('Abra o painel Comercial para gerar o relatório.'); return; }
+
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  var prod=mapaParaArr(R.mP,999999).map(function(x){ return {nome:esc(x.nome), val:x.val, money:fmtMoney(x.val)}; });
-  var dataJson=JSON.stringify(prod);
+  function serie(mapa){
+    return mapaParaArr(mapa||{},999999).map(function(x){ return {nome:esc(x.nome), val:x.val||0}; });
+  }
+
+  // uma secao por dimensao, todas completas (nao o top 8 da tela)
+  var SECOES=[
+    {id:'cli', tit:'Clientes',            col:'Cliente',      dados:serie(R.mC)},
+    {id:'pro', tit:'Produtos',            col:'Produto',      dados:serie(R.mP)},
+    {id:'rep', tit:'Representantes',      col:'Representante',dados:serie(R.mRep)},
+    {id:'ven', tit:'Vendedores',          col:'Vendedor',     dados:serie(R.mV)},
+    {id:'reg', tit:'Regiões / rotas',     col:'Região',       dados:serie(R.mR)},
+    {id:'tip', tit:'Tipos de produto',    col:'Tipo',         dados:serie(R.mTipo)}
+  ].filter(function(x){ return x.dados.length; });
+
+  var kpis=[
+    ['Faturamento',      fmtMoney(R.fat||0)],
+    ['Notas',            (R.notas||0).toLocaleString('pt-BR')],
+    ['Ticket médio',     fmtMoney(R.ticket||0)],
+    ['Clientes distintos',(R.clientesDistintos||0).toLocaleString('pt-BR')]
+  ];
+
   var gerado=new Date().toLocaleString('pt-BR');
   var periodo=esc(R.periodo);
-  var css=`body{font-family:Arial,Helvetica,sans-serif;color:#1d2433;margin:0;background:#f4f5f7;}.wrap{max-width:900px;margin:0 auto;padding:24px;}header.rp{background:#151515;color:#fff;padding:20px 24px;border-radius:12px;margin-bottom:16px;}header.rp h1{margin:0;font-size:20px;}header.rp h1 span{color:#F26B1F;}header.rp .meta{font-size:12px;color:#b9b4ab;margin-top:6px;}.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}.toolbar .lbl{font-size:13px;color:#667085;margin-right:2px;}.toolbar button{background:#fff;border:1px solid #d0d5dd;color:#344054;border-radius:8px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;}.toolbar button.on{background:#F26B1F;border-color:#F26B1F;color:#fff;}section{background:#fff;border:1px solid #e4e7ec;border-radius:10px;padding:14px 16px;}h2{font-size:15px;margin:0 0 10px;}h2 .cnt{font-size:12px;color:#667085;font-weight:normal;}table{width:100%;border-collapse:collapse;font-size:13px;}th,td{padding:6px 8px;border-bottom:1px solid #eef0f3;text-align:left;}th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#667085;}td.v,th.v{text-align:right;font-variant-numeric:tabular-nums;}td.r,th.r{text-align:right;color:#667085;}td.r:first-child,th.r:first-child{text-align:left;}`;
-  var html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Produtos · Monte Castelo</title><style>${css}</style></head><body><div class="wrap">`
-    +`<header class="rp"><h1>Monte <span>Castelo</span> · Produtos</h1><div class="meta">Período: ${periodo} &nbsp;·&nbsp; Gerado em ${gerado}</div></header>`
-    +`<div class="toolbar"><span class="lbl">Ordenar:</span><button data-o="desc" class="on">Maior → menor</button><button data-o="asc">Menor → maior</button><button data-o="az">A → Z</button></div>`
-    +`<section><h2>Produtos <span class="cnt" id="cnt"></span></h2><table><thead><tr><th class="r">#</th><th>Produto</th><th class="v">Faturamento</th><th class="r">%</th><th class="r">% acum.</th></tr></thead><tbody id="tb"></tbody></table></section>`
-    +`</div><script>`
-    +`var DATA=${dataJson};var TOTAL=DATA.reduce(function(a,x){return a+x.val;},0)||1;`
-    +`function fmtPct(n){return n.toFixed(1).replace('.',',')+'%';}`
-    +`function render(o){var arr=DATA.slice();if(o==='asc'){arr.sort(function(a,b){return a.val-b.val;});}else if(o==='az'){arr.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR');});}else{arr.sort(function(a,b){return b.val-a.val;});}var acc=0;document.getElementById('tb').innerHTML=arr.map(function(x,i){acc+=x.val;return '<tr><td class="r">'+(i+1)+'</td><td>'+x.nome+'</td><td class="v">'+x.money+'</td><td class="r">'+fmtPct(x.val/TOTAL*100)+'</td><td class="r">'+fmtPct(acc/TOTAL*100)+'</td></tr>';}).join('');var bs=document.querySelectorAll('.toolbar button');for(var k=0;k<bs.length;k++){bs[k].className=(bs[k].getAttribute('data-o')===o?'on':'');}document.getElementById('cnt').textContent=arr.length+' itens';}`
-    +`var bb=document.querySelectorAll('.toolbar button');for(var k=0;k<bb.length;k++){bb[k].onclick=function(){render(this.getAttribute('data-o'));};}render('desc');`
-    +`<\/script></body></html>`;
+  var dataJson=JSON.stringify(SECOES.map(function(s){ return {id:s.id, dados:s.dados}; }));
+
+  var css='body{font-family:Arial,Helvetica,sans-serif;color:#1d2433;margin:0;background:#f4f5f7;}'
+    +'.wrap{max-width:980px;margin:0 auto;padding:24px;}'
+    +'header.rp{background:#151515;color:#fff;padding:20px 24px;border-radius:12px;margin-bottom:18px;}'
+    +'header.rp h1{margin:0;font-size:20px;font-weight:700;}header.rp h1 span{color:#2fae7d;}'
+    +'header.rp .meta{margin-top:6px;font-size:12px;color:#b9bec9;}'
+    +'.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}'
+    +'.kpi{background:#fff;border:1px solid #e3e6ec;border-radius:10px;padding:14px;}'
+    +'.kpi .k{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;}'
+    +'.kpi .v{font-size:19px;font-weight:700;margin-top:5px;}'
+    +'section{background:#fff;border:1px solid #e3e6ec;border-radius:10px;padding:16px 18px;margin-bottom:16px;}'
+    +'h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px;}'
+    +'h2 .cnt{font-size:11px;font-weight:400;color:#6b7280;}'
+    +'.tb{display:flex;gap:6px;margin:0 0 10px;}'
+    +'.tb button{background:#eef0f4;border:1px solid #dfe3ea;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;}'
+    +'.tb button.on{background:#151515;color:#fff;border-color:#151515;}'
+    +'table{width:100%;border-collapse:collapse;font-size:13px;}'
+    +'th{text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #e3e6ec;padding:7px 6px;}'
+    +'td{padding:7px 6px;border-bottom:1px solid #f0f2f5;}'
+    +'th.v,td.v{text-align:right;}th.r,td.r{text-align:right;color:#6b7280;}'
+    +'tfoot td{font-weight:700;border-top:2px solid #e3e6ec;border-bottom:none;}'
+    +'.pr{margin:0 0 16px;}'
+    +'.pr button{background:#2fae7d;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;}'
+    +'@media print{body{background:#fff;}.tb,.pr{display:none;}section{break-inside:avoid;border:none;padding:0;margin-bottom:22px;}}';
+
+  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
+    +'<title>Relatório Comercial · Monte Castelo</title><style>'+css+'</style></head><body><div class="wrap">'
+    +'<header class="rp"><h1>Monte <span>Castelo</span> · Relatório Comercial</h1>'
+    +'<div class="meta">Período: '+periodo+' &nbsp;·&nbsp; Gerado em '+gerado+'</div></header>'
+    +'<div class="pr"><button onclick="window.print()">Imprimir / salvar em PDF</button></div>'
+    +'<div class="kpis">'+kpis.map(function(k){
+        return '<div class="kpi"><div class="k">'+k[0]+'</div><div class="v">'+k[1]+'</div></div>';
+      }).join('')+'</div>';
+
+  SECOES.forEach(function(sec){
+    html+='<section><h2>'+sec.tit+' <span class="cnt" id="c-'+sec.id+'"></span></h2>'
+      +'<div class="tb" data-sec="'+sec.id+'">'
+      +'<button data-o="desc" class="on">Maior → menor</button>'
+      +'<button data-o="asc">Menor → maior</button>'
+      +'<button data-o="az">A → Z</button></div>'
+      +'<table><thead><tr><th class="r">#</th><th>'+sec.col+'</th>'
+      +'<th class="v">Faturamento</th><th class="r">%</th><th class="r">% acum.</th></tr></thead>'
+      +'<tbody id="tb-'+sec.id+'"></tbody>'
+      +'<tfoot id="tf-'+sec.id+'"></tfoot></table></section>';
+  });
+
+  html+='</div><script>'
+    +'var SECOES='+dataJson+';'
+    +'function fmtM(v){return "R$ "+(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});}'
+    +'function fmtP(n){return n.toFixed(1).replace(".",",")+"%";}'
+    +'function pinta(id,ordem){'
+    +'  var sec=SECOES.filter(function(s){return s.id===id;})[0]; if(!sec) return;'
+    +'  var arr=sec.dados.slice();'
+    +'  if(ordem==="asc") arr.sort(function(a,b){return a.val-b.val;});'
+    +'  else if(ordem==="az") arr.sort(function(a,b){return a.nome.localeCompare(b.nome,"pt-BR");});'
+    +'  else arr.sort(function(a,b){return b.val-a.val;});'
+    +'  var total=sec.dados.reduce(function(a,x){return a+x.val;},0)||1;'
+    +'  var ac=0,h="";'
+    +'  arr.forEach(function(x,i){ ac+=x.val;'
+    +'    h+="<tr><td class=\\"r\\">"+(i+1)+"</td><td>"+x.nome+"</td><td class=\\"v\\">"+fmtM(x.val)'
+    +'      +"</td><td class=\\"r\\">"+fmtP(x.val/total*100)+"</td><td class=\\"r\\">"+fmtP(ac/total*100)+"</td></tr>"; });'
+    +'  document.getElementById("tb-"+id).innerHTML=h;'
+    +'  document.getElementById("tf-"+id).innerHTML="<tr><td></td><td>Total ("+arr.length+")</td><td class=\\"v\\">"+fmtM(total)+"</td><td class=\\"r\\">100,0%</td><td></td></tr>";'
+    +'  document.getElementById("c-"+id).textContent=arr.length+" itens";'
+    +'}'
+    +'document.querySelectorAll(".tb").forEach(function(barra){'
+    +'  var id=barra.getAttribute("data-sec");'
+    +'  barra.querySelectorAll("button").forEach(function(b){'
+    +'    b.onclick=function(){ barra.querySelectorAll("button").forEach(function(x){x.classList.remove("on");}); b.classList.add("on"); pinta(id,b.getAttribute("data-o")); };'
+    +'  });'
+    +'  pinta(id,"desc");'
+    +'});'
+    +'<\/script></body></html>';
+
   var w=window.open('','_blank');
   if(!w){ alert('O navegador bloqueou a nova aba. Permita pop-ups para este site.'); return; }
   w.document.open(); w.document.write(html); w.document.close();
@@ -868,6 +956,7 @@ function iniciarSessao(user){
   onSnapshot(doc(dbC,'usuarios',user.uid), snap=>{
     if(!snap.exists()){ negar('Sua conta ('+sessaoEmail+') não está cadastrada. Faça login primeiro no app do Comodato.'); return; }
     const d=snap.data(); currentRole=d.role||'leitura'; currentAtivo=d.ativo===true;
+    currentRelatorios=(d.relatorios===true);   // flag propria: nao usa role, senao manutencao@ entraria
     if(!currentAtivo){ negar('Sua conta ('+sessaoEmail+') ainda não foi liberada por um administrador.'); return; }
     if(currentRole!=='admin'&&currentRole!=='operador'){ negar('O painel de Gestão é restrito a administradores e operadores.'); return; }
     liberar(d);
@@ -877,6 +966,9 @@ function negar(msg){ document.getElementById('negado-msg').textContent=msg; docu
 function liberar(d){
   document.getElementById('s-negado').style.display='none'; document.getElementById('s-negado').classList.remove('active');
   document.getElementById('app').style.display='flex';
+  // botao do relatorio: so quem tem relatorios:true no documento de usuarios
+  var _rb=document.getElementById('cm-rel-barra');
+  if(_rb) _rb.style.display = currentRelatorios ? 'flex' : 'none';
   const nome=d.nome||sessaoEmail; document.getElementById('uname').textContent=nome;
   document.getElementById('uavatar').textContent=(nome||'?').trim().charAt(0).toUpperCase();
   if(!subE){ subE=onSnapshot(collection(dbC,'equipamentosEstoque'), s=>{ estoque=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.error('estoque:',e)); }
