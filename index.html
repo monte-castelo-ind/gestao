@@ -489,6 +489,8 @@ function diaData(ymd){ return new Date(+ymd.slice(0,4), +ymd.slice(5,7)-1, +ymd.
 function mergeMapa(alvo, src){ if(!src) return; for(const k in src){ alvo[k]=(alvo[k]||0)+src[k]; } }
 function mapaParaArr(m, n){ return Object.keys(m).map(k=>({nome:k,val:m[k]})).sort((a,b)=>b.val-a.val).slice(0, n||8); }
 function mapaParaArrAsc(m, n){ return Object.keys(m).map(k=>({nome:k,val:m[k]})).filter(x=>x.val>0).sort((a,b)=>a.val-b.val).slice(0, n||8); }
+var PESO_PACOTE={"(C&F) CACHORRO ALEMAO":1.5,"(C&F) CACHORRO FOLHADO":1.5,"(C&F) EMPADA FRANGO REQUEIJAO":1.5,"(C&F) EMPADA PRESUNTO QUEIJO":1.5,"(C&F) EMPANADA CALABRESA (10 UN C/ 180GR CX C/ 1,80KG)":1.8,"(C&F) EMPANADA CARNE (10 UN C/ 180GR CX C/ 1,80KG)":1.8,"(C&F) EMPANADA COSTELINHA C/ BARBECUE":1.8,"(C&F) EMPANADA FRANGO CREMOSO":1.8,"(C&F) EMPANADO DE SALSICHA FRITO":1.5,"(C&F) FOLHADO CARNE E CHEDDAR":1.5,"(C&F) FOLHADO CARNE REQUEIJAO":1.5,"(C&F) FOLHADO FRANGO CHEDDAR":1.5,"(C&F) FOLHADO FRANGO REQUEIJAO":1.5,"(C&F) MINI BOLINHA DE QUEIJO":0.5,"(C&F) MINI CHURROS DOCE DE LEITE":0.5,"(C&F) MINI COXINHA DE FRANGO":0.5,"(C&F) MINI CROQUETE CARNE C/ REQUEIJAO":0.5,"(C&F) MINI CROQUETE DE FRANGO C/ REQUEIJAO":0.5,"(C&F) MINI EMPANADINHO DE SALSICHA":0.5,"(C&F) MINI POLENTINHA DE CALABRESA":0.5,"(C&F) MINI RISOLES CARNE":0.5,"(C&F) MINI RISOLES FRANGO":0.5,"(C&F) PASTEL CASEIRO SABOR CARNE":1.02,"(C&F) PASTEL CASEIRO SABOR FRANGO":1.02,"(C&F) RISOLES DE CARNE GRANDE":1.2,"(C&F) RISOLES DE FRANGO GRANDE":1.2,"BAURU FOLHADO (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"BOLINHA DE AIPIM C/ CALABRESA":1,"CACHORRO ALEMAO (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"CACHORRO FOLHADO (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"CALABRINHO":2,"COXINHA DE FRANGO (CX C/ 10 UNID DE 170GR)":1.7,"CROISSANT (10 UN C/ 125GR CX C/ 1,25KG)":1.25,"CROISSANT CHOCOLATE (10 UN C/ 125GR CX C/ 1,25KG)":1.25,"CROISSANT FRANGO (10 UN C/ 140GR CX C/ 1,4KG)":1.4,"CROISSANT GOIABADA (10 UN C/ 140GR CX C/ 1,4KG)":1.4,"CROISSANT PRESUNTO (10 UN C/ 140GR CX C/ 1,4KG)":1.4,"CUCA ALEMA 320GR":0.32,"CUCA CHOCOLATE 320GR":0.32,"CUCA COLONIAL 400GR":4,"CUCA FRUTAS 320GR":0.32,"CUECA VIRADA 40GR":2,"CUECA VIRADA GRANDE 44GR":2,"DOGUINHO":2,"EMPADA CARNE (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"EMPADA CARNE REQUEIJAO (10 UN C/ 150GR CX C/ 1,5KG)":1.5,"EMPADA FRANGO (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"EMPADA FRANGO REQUEIJAO (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"EMPADA PRESUNTO QUEIJO (10 UN C/ 150GR CX C/ 1,5KG)":1.5,"EMPANADA BROCOLIS (10 UN C/ 180GR CX C/ 1,80KG)":1.8,"EMPANADA CALABRESA (10 UN C/ 180GR CX C/ 1,80KG)":1.8,"EMPANADA CARNE (10 UN C/ 180GR CX C/ 1,80KG)":1.8,"EMPANADA COSTELINHA C/ BARBECUE (10 UN C/ 180GR CX C/ 1,80KG)":1.8,"EMPANADA FRANGO REQUEIJAO (10 UN C/ 180GR CX C/ 1,80KG)":1.8,"EMPANADA QUEIJO (10 UN C/ 180GR CX C/ 1,80KG)":1.8,"EMPANADO DE SALSICHA FRITO (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"FAGOTTO (CALABRINHO CALABRESA CHEDDAR) (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"FOLHADO CALABRESA (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"FOLHADO CALABRESA REQUEIJAO (10UN C/ 150GR CX C/ 1,50KG)":1.5,"FOLHADO CARNE (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"FOLHADO CARNE E CHEDDAR (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"FOLHADO CARNE REQUEIJAO (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"FOLHADO CHOCOLATE (10 UN C/ 125GR CX C/ 1,25KG)":1.25,"FOLHADO DE STROGONOFF (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"FOLHADO FRANGO (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"FOLHADO FRANGO CHEDDAR (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"FOLHADO FRANGO REQUEIJAO (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"FOLHADO PRESUNTO QUEIJO (10 UN C/ 150GR CX C/ 1,50KG)":1.5,"HAMBURGAO CARNE CHEDDAR (10 UN C/ 180GR CX C/ 1,80KG)":1.8,"MASSA FOLHADA":1,"MINI BOLINHA DE QUEIJO":1,"MINI CACHORRO FOLHADO":1,"MINI CHURROS DOCE DE LEITE":1,"MINI COXINHA DE FRANGO":1,"MINI CROISSANT CHOCOLATE BRANCO":1,"MINI CROISSANT CHOCOLATE PRETO":1,"MINI CROISSANT COCO":1,"MINI CROISSANT FRANGO":1,"MINI CROISSANT GOIABADA":1,"MINI CROISSANT PREMIUM CHOCOLATE":1,"MINI CROISSANT PREMIUM FRANGO":1,"MINI CROISSANT PREMIUM GOIABADA":1,"MINI CROISSANT PREMIUM PRESUNTO":1,"MINI CROISSANT PRESUNTO":1,"MINI CROQUETE CARNE":1,"MINI CROQUETE CARNE C/ REQUEIJAO":1,"MINI CROQUETE DE FRANGO C/ REQUEIJAO":1,"MINI EMPADA FRANGO FOLHADA":1,"MINI EMPADA PRESUNTO E QUEIJO":1,"MINI EMPANADINHO DE SALSICHA FRITO":1,"MINI FOLHADO FRANGO":1,"MINI FOLHADO GOIABADA":1,"MINI FOLHADO PRESUNTO QUEIJO":1,"MINI KIBE":1,"MINI PASTEL DE CARNE":1,"MINI PASTEL DE FRANGO":1,"MINI PASTEL DE QUEIJO":1,"MINI POLENTINHA DE CALABRESA":1,"MINI RISOLES CARNE":1,"MINI RISOLES FRANGO":1,"MINI STRUDEL MACA/CANELA":1,"MINI TRAVISSEIRINHO CALABRESA":1,"MINI TRAVISSEIRINHO PRESUNTO/QUEIJO":1,"PALMIER - ORELHA DE MACACO":1,"PAO 7 GRAOS 500GR":3.5,"PAO AIPIM 500GR":3.5,"PAO BAGUETE COM FIBRAS 155GR":3.5,"PAO BRIOCHE 500GR":3.5,"PAO CARACOL 88GR":3,"PAO CASEIRO 500GR":3.5,"PAO CENOURA 500GR":3.5,"PAO DE BATATA 500GR":3.5,"PAO DE BATATA 75GR":3.5,"PAO DE CENOURA 75GR":3.5,"PAO DE LEITE 500GR":3.5,"PAO DE MILHO - BOLA 75GR":3.5,"PAO DE MILHO - SALGADO (CACETINHO) 75GR":3.5,"PAO DE MILHO SALGADO 500GR":3.5,"PAO DE QUEIJO 25GR":1,"PAO DE QUEIJO 25GR - RECEITARIA":0.4,"PAO DE QUEIJO 65GR":3.5,"PAO DE QUEIJO 65GR - RECEITARIA":1,"PAO DE QUEIJO 65GR 1KG GONDOLA":1,"PAO DE QUEIJO 90GR":3.5,"PAO DE QUEIJO RECH. DOCE DE LEITE 400GR (RECEITARIA)":0.4,"PAO DE QUEIJO RECH. FRANGO 400GR (RECEITARIA)":0.4,"PAO DE QUEIJO RECH. FRANGO 58GR":2,"PAO DE QUEIJO RECH. GOIABADA 400GR (RECEITARIA)":0.4,"PAO DE QUEIJO RECH. GOIABADA 58GR":2,"PAO DE QUEIJO RECH. REQUEIJAO 400GR (RECEITARIA)":0.4,"PAO DE QUEIJO RECH. REQUEIJAO 58GR":2,"PAO DE SONHO 70GR":3,"PAO DE SONHO MINI 44GR":3,"PAO DE XIS 120GR":3.5,"PAO DOCE BRIOCHE 60GR":3.5,"PAO DONUT 44GR":2,"PAO FIBRAS - BOLA 75GR":3.5,"PAO FIBRAS - PRETO 75GR":3.5,"PAO FIBRAS 500GR":3.5,"PAO FIBRAS 75GR":3.5,"PAO FOLHADO 88GR":3,"PAO FRANCES 500GR":3.5,"PAO FRANCES BAGUETE 155GR":3.5,"PAO FRANCES BOLA 75GR":8,"PAO FRANCES BOLA CARDOSO 6,6KG":6.6,"PAO FRANCES DE QUARTO (250)":3.5,"PAO FRANCES MINI 6/8 54GR":8,"PAO FRANCES PREMIUM 10/12":8,"PAO FRANCES PREMIUM 6,6KG CARDOSO EMB. PRETA":6.6,"PAO FRANCES PREMIUM 75GR":8,"PAO FRANCES PREMIUM PLUS":8,"PAO FRANCES SOVADO 88GR":3.5,"PAO GAJETA 88GR":3.5,"PAO MASSA DOCE - CAO 135GR":3.5,"PAO MASSA DOCE 75GR":3.5,"PAO MASSA DOCE ANIVERSARIO 45GR":3.5,"PAO MASSA DOCE HAMBURGUER 90GR":3.5,"PAO MASSA FORNEADO":0.01,"PAO MILHO DOCE 500GR":3.5,"PAO RAMINHO 37GR":3,"PAO TRANCA 270GR":3,"PAO VOVO 88GR":3.5,"PASTEL CASEIRO SABOR CALABRESA (06 UN C/ 170GR PCT C/ 1,02KG)":1.02,"PASTEL CASEIRO SABOR CARNE (06 UN C/ 170GR PCT C/ 1,02KG)":1.02,"PASTEL CASEIRO SABOR CARNE DE PANELA (06 UN C/ 170GR PCT C/ 1,02KG)":1.02,"PASTEL CASEIRO SABOR CORACAO (06 UN C/ 170GR PCT C/ 1,02KG)":1.02,"PASTEL CASEIRO SABOR FRANGO (06 UN C/ 170GR PCT C/ 1,02KG)":1.02,"PASTEL CASEIRO SABOR QUEIJO (06 UN C/ 170GR PCT C/ 1,02KG)":1.02,"PASTEL CASEIRO SABOR STROGONOFF (06 UN C/ 170GR PCT C/ 1,02KG)":1.02,"POLENTINHA DE QUEIJO":1,"RISOLES DE CARNE GRANDE (150GR UN/PCT COM 1,5KG)":1.5,"RISOLES DE FRANGO GRANDE (150GR UN/PCT COM 1,5KG)":1.5,"ROLO MASSA DE PAO-SEMI FOLHADA":2.5,"ROLO MASSA FOLHADA":2.5,"ROSCA DE POLVILHO 250GR":3.5,"SALGADOS CROQUETE (CX C/ 10UNID DE 110GR)":1.1};
+function normP(s){ return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toUpperCase(); }
 window.relatorioCompleto=function(){
   if(!currentRelatorios){ alert('Relatório restrito.'); return; }
   var R=window.__relCom;
@@ -519,7 +521,33 @@ window.relatorioCompleto=function(){
   var tema=(document.documentElement.getAttribute('data-theme')==='dark')?'dark':'light';
   var dataJson=JSON.stringify(SECOES.map(function(s){ return {id:s.id, dados:s.dados}; }));
 
+  // ---- Produtos: pacotes (produtosQtd) x KG (tabela de pesos embutida) x faturamento ----
+  var _mP=R.mP||{}, _mPQ=R.mPQ||{};
+  var _CAT=(typeof PESO_PACOTE!=='undefined')?PESO_PACOTE:{};
+  function _np(s){ return (typeof normP!=='undefined')?normP(s):String(s==null?'':s).toUpperCase(); }
+  var _nomes={}; Object.keys(_mP).forEach(function(n){_nomes[n]=1;}); Object.keys(_mPQ).forEach(function(n){_nomes[n]=1;});
+  var prodkg=Object.keys(_nomes).map(function(n){
+    var pac=_mPQ[n]||0, fat=_mP[n]||0, peso=_CAT[_np(n)];
+    return { nome:esc(n), pac:pac, kg:(peso!=null?pac*peso:0), fat:fat, temPeso:(peso!=null) };
+  }).filter(function(x){ return x.pac>0 || x.fat>0; });
+  var prodkgJson=JSON.stringify(prodkg);
+  var semPeso=prodkg.filter(function(x){ return !x.temPeso; }).length;
+
   var kpisHtml=kpis.map(function(k){ return '<div class="kpi"><div class="k">'+k[0]+'</div><div class="v">'+k[1]+'</div></div>'; }).join('');
+
+  // seção nova (só aparece se houver produtos com pacotes/faturamento)
+  var pkHtml='';
+  if(prodkg.length){
+    pkHtml='<section><div class="sec-top">'
+      +'<h2>Produtos &middot; pacotes &middot; KG &middot; faturamento <span class="cnt" id="c-pk"></span></h2>'
+      +'<div class="tb" id="tb-pk"><button data-o="fat" class="on">Faturamento</button><button data-o="kg">KG</button><button data-o="pac">Pacotes</button><button data-o="az">A &rarr; Z</button></div>'
+      +'<div class="busca"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
+      +'<input id="q-pk" type="text" placeholder="Buscar produto&hellip;" autocomplete="off"></div>'
+      +'</div>'
+      +(semPeso?'<div style="font-size:11.5px;color:var(--muted);margin:-4px 0 10px;">KG = pacotes vendidos &times; peso cadastrado. '+semPeso+' produto(s) sem peso na tabela aparecem com KG 0.</div>':'')
+      +'<table><thead><tr><th class="r">#</th><th>Produto</th><th class="v">Pacotes</th><th class="v">KG</th><th class="v">Faturamento</th></tr></thead>'
+      +'<tbody id="body-pk"></tbody><tfoot id="foot-pk"></tfoot></table></section>';
+  }
 
   var secHtml=SECOES.map(function(sec){
     return '<section><div class="sec-top">'
@@ -568,12 +596,14 @@ window.relatorioCompleto=function(){
     +'.vazio{padding:16px 6px;color:var(--muted);font-size:13px;text-align:center;}'
     +'@media print{body{background:#fff;}.pr,.tb,.busca{display:none!important;}section,.kpi,header.rp{box-shadow:none;break-inside:avoid;}}';
 
-  var innerJs='var SECOES='+dataJson+';'
+  var innerJs='var SECOES='+dataJson+';var PRODKG='+prodkgJson+';'
     +'function norm(s){s=(s==null?"":(""+s)).toLowerCase();'
     +'return s.replace(/[áàâãä]/g,"a").replace(/[éèêë]/g,"e").replace(/[íìîï]/g,"i").replace(/[óòôõö]/g,"o").replace(/[úùûü]/g,"u").replace(/ç/g,"c");}'
     +'function fmtM(v){return "R$ "+(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});}'
     +'function fmtP(n){return n.toFixed(1).replace(".",",")+"%";}'
-    +'document.querySelectorAll(".tb").forEach(function(barra){'
+    +'function fmtInt(v){return Math.round(v||0).toLocaleString("pt-BR");}'
+    +'function fmtKg(v){return (v||0).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})+" kg";}'
+    +'document.querySelectorAll(".tb[data-sec]").forEach(function(barra){'
     +'  var id=barra.getAttribute("data-sec");'
     +'  var sec=null; for(var i=0;i<SECOES.length;i++){ if(SECOES[i].id===id){ sec=SECOES[i]; break; } }'
     +'  var input=document.getElementById("q-"+id);'
@@ -598,7 +628,31 @@ window.relatorioCompleto=function(){
     +'  barra.querySelectorAll("button").forEach(function(b){ b.onclick=function(){ barra.querySelectorAll("button").forEach(function(x){ x.classList.remove("on"); }); b.classList.add("on"); render(); }; });'
     +'  if(input) input.addEventListener("input", render);'
     +'  render();'
-    +'});';
+    +'});'
+    +'(function(){'
+    +'  var barra=document.getElementById("tb-pk"); if(!barra) return;'
+    +'  var input=document.getElementById("q-pk");'
+    +'  var body=document.getElementById("body-pk"), foot=document.getElementById("foot-pk"), cc=document.getElementById("c-pk");'
+    +'  function render(){'
+    +'    var bo=barra.querySelector("button.on"); var ordem=bo?bo.getAttribute("data-o"):"fat";'
+    +'    var q=input?norm(input.value):"";'
+    +'    var arr=PRODKG.slice();'
+    +'    if(q) arr=arr.filter(function(x){ return norm(x.nome).indexOf(q)>=0; });'
+    +'    if(ordem==="kg") arr.sort(function(a,b){ return b.kg-a.kg; });'
+    +'    else if(ordem==="pac") arr.sort(function(a,b){ return b.pac-a.pac; });'
+    +'    else if(ordem==="az") arr.sort(function(a,b){ return a.nome.localeCompare(b.nome,"pt-BR"); });'
+    +'    else arr.sort(function(a,b){ return b.fat-a.fat; });'
+    +'    var tp=0,tk=0,tf=0; for(var j=0;j<arr.length;j++){ tp+=arr[j].pac; tk+=arr[j].kg; tf+=arr[j].fat; }'
+    +'    if(!arr.length){ body.innerHTML="<tr><td colspan=\\"5\\" class=\\"vazio\\">Nenhum resultado"+(q?" para a busca":"")+".</td></tr>"; foot.innerHTML=""; cc.textContent=q?("0 de "+PRODKG.length+" itens"):"0 itens"; return; }'
+    +'    var h=""; arr.forEach(function(x,i){ h+="<tr><td class=\\"r\\">"+(i+1)+"</td><td>"+x.nome+"</td><td class=\\"v\\">"+fmtInt(x.pac)+"</td><td class=\\"v\\">"+(x.temPeso?fmtKg(x.kg):"<span style=\\x27color:var(--muted)\\x27>&mdash;</span>")+"</td><td class=\\"v\\">"+fmtM(x.fat)+"</td></tr>"; });'
+    +'    body.innerHTML=h;'
+    +'    foot.innerHTML="<tr><td></td><td>Total ("+arr.length+")</td><td class=\\"v\\">"+fmtInt(tp)+"</td><td class=\\"v\\">"+fmtKg(tk)+"</td><td class=\\"v\\">"+fmtM(tf)+"</td></tr>";'
+    +'    cc.textContent=q?(arr.length+" de "+PRODKG.length+" itens"):(arr.length+" itens");'
+    +'  }'
+    +'  barra.querySelectorAll("button").forEach(function(b){ b.onclick=function(){ barra.querySelectorAll("button").forEach(function(x){ x.classList.remove("on"); }); b.classList.add("on"); render(); }; });'
+    +'  if(input) input.addEventListener("input", render);'
+    +'  render();'
+    +'})();';
 
   var html='<!DOCTYPE html><html lang="pt-BR" data-theme="'+tema+'"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
     +'<title>Relatório Comercial · Monte Castelo</title>'
@@ -609,6 +663,7 @@ window.relatorioCompleto=function(){
     +'<div class="meta">Período: '+periodo+' &nbsp;·&nbsp; Gerado em '+gerado+'</div></div></header>'
     +'<div class="pr"><button onclick="window.print()">🖨️ Imprimir / salvar em PDF</button></div>'
     +'<div class="kpis">'+kpisHtml+'</div>'
+    +pkHtml
     +secHtml
     +'<script>'+innerJs+'<'+'/script></body></html>';
 
@@ -1046,9 +1101,9 @@ function render(){
     const fat=docs.reduce((a,d)=>a+(d.faturamento||0),0);
     const reg=docs.reduce((a,d)=>a+(d.registros||0),0);
     const notas=docs.reduce((a,d)=>a+(d.notas||0),0);
-    const mC={},mP={},mR={},mV={},mRep={},mTipo={}, mTipoKg={};
-    docs.forEach(d=>{ mergeMapa(mC,d.clientes); mergeMapa(mP,d.produtos); mergeMapa(mR,d.regioes); mergeMapa(mV,d.vendedores); mergeMapa(mRep,d.representantes); mergeMapa(mTipo,d.tiposProduto); mergeMapa(mTipoKg,d.tiposProdutoKg); });
-    window.__relCom={ periodo:((periodo==='tudo')?'Todo o período':(String(rr.de.getDate()).padStart(2,'0')+'/'+String(rr.de.getMonth()+1).padStart(2,'0')+'/'+rr.de.getFullYear()+' – '+String(rr.ate.getDate()).padStart(2,'0')+'/'+String(rr.ate.getMonth()+1).padStart(2,'0')+'/'+rr.ate.getFullYear())), fat:fat, notas:notas, ticket:(notas?fat/notas:0), clientesDistintos:Object.keys(mC).length, mC:mC, mP:mP, mR:mR, mV:mV, mRep:mRep, mTipo:mTipo, mTipoKg:mTipoKg };
+    const mC={},mP={},mR={},mV={},mRep={},mTipo={}, mTipoKg={}, mPQ={};
+    docs.forEach(d=>{ mergeMapa(mC,d.clientes); mergeMapa(mP,d.produtos); mergeMapa(mR,d.regioes); mergeMapa(mV,d.vendedores); mergeMapa(mRep,d.representantes); mergeMapa(mTipo,d.tiposProduto); mergeMapa(mTipoKg,d.tiposProdutoKg); mergeMapa(mPQ,d.produtosQtd); });
+    window.__relCom={ periodo:((periodo==='tudo')?'Todo o período':(String(rr.de.getDate()).padStart(2,'0')+'/'+String(rr.de.getMonth()+1).padStart(2,'0')+'/'+rr.de.getFullYear()+' – '+String(rr.ate.getDate()).padStart(2,'0')+'/'+String(rr.ate.getMonth()+1).padStart(2,'0')+'/'+rr.ate.getFullYear())), fat:fat, notas:notas, ticket:(notas?fat/notas:0), clientesDistintos:Object.keys(mC).length, mC:mC, mP:mP, mR:mR, mV:mV, mRep:mRep, mTipo:mTipo, mTipoKg:mTipoKg, mPQ:mPQ };
     document.getElementById('cm-kpis').innerHTML=
       kpiCard('Faturamento', fmtMoney(fat), '💰','#1f9d6b')+
       kpiCard('Notas fiscais', notas.toLocaleString('pt-BR'), '🧾','#3b6ef5')+
