@@ -495,104 +495,122 @@ window.relatorioCompleto=function(){
   if(!R){ alert('Abra o painel Comercial para gerar o relatório.'); return; }
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  function serie(mapa){
-    return mapaParaArr(mapa||{},999999).map(function(x){ return {nome:esc(x.nome), val:x.val||0}; });
-  }
+  function serie(mapa){ return mapaParaArr(mapa||{},999999).map(function(x){ return {nome:esc(x.nome), val:x.val||0}; }); }
 
-  // uma secao por dimensao, todas completas (nao o top 8 da tela)
   var SECOES=[
-    {id:'cli', tit:'Clientes',            col:'Cliente',      dados:serie(R.mC)},
-    {id:'pro', tit:'Produtos',            col:'Produto',      dados:serie(R.mP)},
-    {id:'rep', tit:'Representantes',      col:'Representante',dados:serie(R.mRep)},
-    {id:'ven', tit:'Vendedores',          col:'Vendedor',     dados:serie(R.mV)},
-    {id:'reg', tit:'Regiões / rotas',     col:'Região',       dados:serie(R.mR)},
-    {id:'tip', tit:'Tipos de produto',    col:'Tipo',         dados:serie(R.mTipo)},
-    {id:'kg',  tit:'Tipos de produto · em quilo', col:'Tipo',   dados:serie(R.mTipoKg), kg:true}
+    {id:'cli', tit:'Clientes',                    col:'Cliente',       dados:serie(R.mC)},
+    {id:'pro', tit:'Produtos',                    col:'Produto',       dados:serie(R.mP)},
+    {id:'rep', tit:'Representantes',              col:'Representante', dados:serie(R.mRep)},
+    {id:'ven', tit:'Vendedores',                  col:'Vendedor',      dados:serie(R.mV)},
+    {id:'reg', tit:'Regiões / rotas',             col:'Região',        dados:serie(R.mR)},
+    {id:'tip', tit:'Tipos de produto',            col:'Tipo',          dados:serie(R.mTipo)},
+    {id:'kg',  tit:'Tipos de produto · em quilo', col:'Tipo',          dados:serie(R.mTipoKg)}
   ].filter(function(x){ return x.dados.length; });
 
   var kpis=[
-    ['Faturamento',      fmtMoney(R.fat||0)],
-    ['Notas',            (R.notas||0).toLocaleString('pt-BR')],
-    ['Ticket médio',     fmtMoney(R.ticket||0)],
+    ['Faturamento',       fmtMoney(R.fat||0)],
+    ['Notas',             (R.notas||0).toLocaleString('pt-BR')],
+    ['Ticket médio',      fmtMoney(R.ticket||0)],
     ['Clientes distintos',(R.clientesDistintos||0).toLocaleString('pt-BR')]
   ];
 
   var gerado=new Date().toLocaleString('pt-BR');
   var periodo=esc(R.periodo);
+  var tema=(document.documentElement.getAttribute('data-theme')==='dark')?'dark':'light';
   var dataJson=JSON.stringify(SECOES.map(function(s){ return {id:s.id, dados:s.dados}; }));
 
-  var css='body{font-family:Arial,Helvetica,sans-serif;color:#1d2433;margin:0;background:#f4f5f7;}'
-    +'.wrap{max-width:980px;margin:0 auto;padding:24px;}'
-    +'header.rp{background:#151515;color:#fff;padding:20px 24px;border-radius:12px;margin-bottom:18px;}'
-    +'header.rp h1{margin:0;font-size:20px;font-weight:700;}header.rp h1 span{color:#2fae7d;}'
-    +'header.rp .meta{margin-top:6px;font-size:12px;color:#b9bec9;}'
-    +'.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}'
-    +'.kpi{background:#fff;border:1px solid #e3e6ec;border-radius:10px;padding:14px;}'
-    +'.kpi .k{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;}'
-    +'.kpi .v{font-size:19px;font-weight:700;margin-top:5px;}'
-    +'section{background:#fff;border:1px solid #e3e6ec;border-radius:10px;padding:16px 18px;margin-bottom:16px;}'
-    +'h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px;}'
-    +'h2 .cnt{font-size:11px;font-weight:400;color:#6b7280;}'
-    +'.tb{display:flex;gap:6px;margin:0 0 10px;}'
-    +'.tb button{background:#eef0f4;border:1px solid #dfe3ea;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;}'
-    +'.tb button.on{background:#151515;color:#fff;border-color:#151515;}'
+  var kpisHtml=kpis.map(function(k){ return '<div class="kpi"><div class="k">'+k[0]+'</div><div class="v">'+k[1]+'</div></div>'; }).join('');
+
+  var secHtml=SECOES.map(function(sec){
+    return '<section><div class="sec-top">'
+      +'<h2>'+sec.tit+' <span class="cnt" id="c-'+sec.id+'"></span></h2>'
+      +'<div class="tb" data-sec="'+sec.id+'"><button data-o="desc" class="on">Maior &rarr; menor</button><button data-o="asc">Menor &rarr; maior</button><button data-o="az">A &rarr; Z</button></div>'
+      +'<div class="busca"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
+      +'<input id="q-'+sec.id+'" type="text" placeholder="Buscar '+sec.col.toLowerCase()+'&hellip;" autocomplete="off"></div>'
+      +'</div>'
+      +'<table><thead><tr><th class="r">#</th><th>'+sec.col+'</th><th class="v">Faturamento</th><th class="r">%</th><th class="r">% acum.</th></tr></thead>'
+      +'<tbody id="tb-'+sec.id+'"></tbody><tfoot id="tf-'+sec.id+'"></tfoot></table></section>';
+  }).join('');
+
+  var css='*{box-sizing:border-box;margin:0;padding:0;}'
+    +':root,html[data-theme="light"]{--bg:#eef1f6;--card:#ffffff;--card2:#f6f8fb;--text:#1c2333;--muted:#8a91a3;--border:#e8ebf1;--primary:#1f8a5f;--amber:#f5b013;--track:rgba(20,25,45,.06);--shadow:0 1px 2px rgba(20,25,45,.05),0 10px 30px rgba(20,25,45,.045);}'
+    +'html[data-theme="dark"]{--bg:#0f111a;--card:#191c29;--card2:#212536;--text:#e7e9f0;--muted:#868da3;--border:rgba(255,255,255,.07);--primary:#2fae7d;--amber:#f5b013;--track:rgba(255,255,255,.07);--shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.28);}'
+    +'body{font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}'
+    +'.wrap{max-width:1000px;margin:0 auto;padding:26px 22px 60px;}'
+    +'header.rp{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow);padding:18px 20px;border-radius:16px;margin-bottom:18px;}'
+    +'header.rp .mark{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,var(--primary),var(--amber));display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 auto;}'
+    +'header.rp h1{font-size:19px;font-weight:800;letter-spacing:-.01em;}header.rp h1 span{color:var(--primary);}'
+    +'header.rp .meta{margin-top:3px;font-size:12px;color:var(--muted);}'
+    +'.pr{display:flex;gap:8px;margin:0 0 18px;}'
+    +'.pr button{background:var(--primary);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;}'
+    +'.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}'
+    +'.kpi{background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow);border-radius:14px;padding:15px 16px;}'
+    +'.kpi .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600;}'
+    +'.kpi .v{font-size:21px;font-weight:800;margin-top:5px;letter-spacing:-.01em;}'
+    +'section{background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow);border-radius:14px;padding:16px 18px;margin-bottom:16px;}'
+    +'.sec-top{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:12px;}'
+    +'h2{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;}'
+    +'h2 .cnt{font-size:11px;font-weight:500;color:var(--muted);}'
+    +'.tb{display:flex;gap:6px;}'
+    +'.tb button{background:var(--card2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;}'
+    +'.tb button.on{background:var(--primary);color:#fff;border-color:var(--primary);}'
+    +'.busca{margin-left:auto;position:relative;display:flex;align-items:center;color:var(--muted);}'
+    +'.busca svg{position:absolute;left:10px;opacity:.7;pointer-events:none;}'
+    +'.busca input{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:7px 12px 7px 32px;font-size:12.5px;font-family:inherit;width:220px;max-width:52vw;}'
+    +'.busca input:focus{outline:none;border-color:var(--primary);}'
     +'table{width:100%;border-collapse:collapse;font-size:13px;}'
-    +'th{text-align:left;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #e3e6ec;padding:7px 6px;}'
-    +'td{padding:7px 6px;border-bottom:1px solid #f0f2f5;}'
-    +'th.v,td.v{text-align:right;}th.r,td.r{text-align:right;color:#6b7280;}'
-    +'tfoot td{font-weight:700;border-top:2px solid #e3e6ec;border-bottom:none;}'
-    +'.pr{margin:0 0 16px;}'
-    +'.pr button{background:#2fae7d;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;}'
-    +'@media print{body{background:#fff;}.tb,.pr{display:none;}section{break-inside:avoid;border:none;padding:0;margin-bottom:22px;}}';
+    +'th{text-align:left;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;border-bottom:1px solid var(--border);padding:8px 6px;}'
+    +'td{padding:8px 6px;border-bottom:1px solid var(--border);}'
+    +'tbody tr:last-child td{border-bottom:none;}'
+    +'th.v,td.v{text-align:right;}th.r,td.r{text-align:right;color:var(--muted);}'
+    +'td.v{font-variant-numeric:tabular-nums;font-weight:600;color:var(--text);}'
+    +'tfoot td{font-weight:800;border-top:2px solid var(--border);border-bottom:none;padding-top:10px;}'
+    +'.vazio{padding:16px 6px;color:var(--muted);font-size:13px;text-align:center;}'
+    +'@media print{body{background:#fff;}.pr,.tb,.busca{display:none!important;}section,.kpi,header.rp{box-shadow:none;break-inside:avoid;}}';
 
-  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
-    +'<title>Relatório Comercial · Monte Castelo</title><style>'+css+'</style></head><body><div class="wrap">'
-    +'<header class="rp"><h1>Monte <span>Castelo</span> · Relatório Comercial</h1>'
-    +'<div class="meta">Período: '+periodo+' &nbsp;·&nbsp; Gerado em '+gerado+'</div></header>'
-    +'<div class="pr"><button onclick="window.print()">Imprimir / salvar em PDF</button></div>'
-    +'<div class="kpis">'+kpis.map(function(k){
-        return '<div class="kpi"><div class="k">'+k[0]+'</div><div class="v">'+k[1]+'</div></div>';
-      }).join('')+'</div>';
-
-  SECOES.forEach(function(sec){
-    html+='<section><h2>'+sec.tit+' <span class="cnt" id="c-'+sec.id+'"></span></h2>'
-      +'<div class="tb" data-sec="'+sec.id+'">'
-      +'<button data-o="desc" class="on">Maior → menor</button>'
-      +'<button data-o="asc">Menor → maior</button>'
-      +'<button data-o="az">A → Z</button></div>'
-      +'<table><thead><tr><th class="r">#</th><th>'+sec.col+'</th>'
-      +'<th class="v">Faturamento</th><th class="r">%</th><th class="r">% acum.</th></tr></thead>'
-      +'<tbody id="tb-'+sec.id+'"></tbody>'
-      +'<tfoot id="tf-'+sec.id+'"></tfoot></table></section>';
-  });
-
-  html+='</div><script>'
-    +'var SECOES='+dataJson+';'
+  var innerJs='var SECOES='+dataJson+';'
+    +'function norm(s){s=(s==null?"":(""+s)).toLowerCase();'
+    +'return s.replace(/[áàâãä]/g,"a").replace(/[éèêë]/g,"e").replace(/[íìîï]/g,"i").replace(/[óòôõö]/g,"o").replace(/[úùûü]/g,"u").replace(/ç/g,"c");}'
     +'function fmtM(v){return "R$ "+(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});}'
     +'function fmtP(n){return n.toFixed(1).replace(".",",")+"%";}'
-    +'function pinta(id,ordem){'
-    +'  var sec=SECOES.filter(function(s){return s.id===id;})[0]; if(!sec) return;'
-    +'  var arr=sec.dados.slice();'
-    +'  if(ordem==="asc") arr.sort(function(a,b){return a.val-b.val;});'
-    +'  else if(ordem==="az") arr.sort(function(a,b){return a.nome.localeCompare(b.nome,"pt-BR");});'
-    +'  else arr.sort(function(a,b){return b.val-a.val;});'
-    +'  var total=sec.dados.reduce(function(a,x){return a+x.val;},0)||1;'
-    +'  var ac=0,h="";'
-    +'  arr.forEach(function(x,i){ ac+=x.val;'
-    +'    h+="<tr><td class=\\"r\\">"+(i+1)+"</td><td>"+x.nome+"</td><td class=\\"v\\">"+fmtM(x.val)'
-    +'      +"</td><td class=\\"r\\">"+fmtP(x.val/total*100)+"</td><td class=\\"r\\">"+fmtP(ac/total*100)+"</td></tr>"; });'
-    +'  document.getElementById("tb-"+id).innerHTML=h;'
-    +'  document.getElementById("tf-"+id).innerHTML="<tr><td></td><td>Total ("+arr.length+")</td><td class=\\"v\\">"+fmtM(total)+"</td><td class=\\"r\\">100,0%</td><td></td></tr>";'
-    +'  document.getElementById("c-"+id).textContent=arr.length+" itens";'
-    +'}'
     +'document.querySelectorAll(".tb").forEach(function(barra){'
     +'  var id=barra.getAttribute("data-sec");'
-    +'  barra.querySelectorAll("button").forEach(function(b){'
-    +'    b.onclick=function(){ barra.querySelectorAll("button").forEach(function(x){x.classList.remove("on");}); b.classList.add("on"); pinta(id,b.getAttribute("data-o")); };'
-    +'  });'
-    +'  pinta(id,"desc");'
-    +'});'
-    +'<\/script></body></html>';
+    +'  var sec=null; for(var i=0;i<SECOES.length;i++){ if(SECOES[i].id===id){ sec=SECOES[i]; break; } }'
+    +'  var input=document.getElementById("q-"+id);'
+    +'  var tb=document.getElementById("tb-"+id), tf=document.getElementById("tf-"+id), cc=document.getElementById("c-"+id);'
+    +'  function render(){'
+    +'    if(!sec) return;'
+    +'    var bo=barra.querySelector("button.on"); var ordem=bo?bo.getAttribute("data-o"):"desc";'
+    +'    var q=input?norm(input.value):"";'
+    +'    var arr=sec.dados.slice();'
+    +'    if(q) arr=arr.filter(function(x){ return norm(x.nome).indexOf(q)>=0; });'
+    +'    if(ordem==="asc") arr.sort(function(a,b){ return a.val-b.val; });'
+    +'    else if(ordem==="az") arr.sort(function(a,b){ return a.nome.localeCompare(b.nome,"pt-BR"); });'
+    +'    else arr.sort(function(a,b){ return b.val-a.val; });'
+    +'    var total=0; for(var j=0;j<arr.length;j++) total+=arr[j].val;'
+    +'    if(!arr.length){ tb.innerHTML="<tr><td colspan=\\"5\\" class=\\"vazio\\">Nenhum resultado"+(q?" para a busca":"")+".</td></tr>"; tf.innerHTML=""; cc.textContent=q?("0 de "+sec.dados.length+" itens"):"0 itens"; return; }'
+    +'    var base=total||1, ac=0, h="";'
+    +'    arr.forEach(function(x,i){ ac+=x.val; h+="<tr><td class=\\"r\\">"+(i+1)+"</td><td>"+x.nome+"</td><td class=\\"v\\">"+fmtM(x.val)+"</td><td class=\\"r\\">"+fmtP(x.val/base*100)+"</td><td class=\\"r\\">"+fmtP(ac/base*100)+"</td></tr>"; });'
+    +'    tb.innerHTML=h;'
+    +'    tf.innerHTML="<tr><td></td><td>Total ("+arr.length+")</td><td class=\\"v\\">"+fmtM(total)+"</td><td class=\\"r\\">100,0%</td><td></td></tr>";'
+    +'    cc.textContent=q?(arr.length+" de "+sec.dados.length+" itens"):(arr.length+" itens");'
+    +'  }'
+    +'  barra.querySelectorAll("button").forEach(function(b){ b.onclick=function(){ barra.querySelectorAll("button").forEach(function(x){ x.classList.remove("on"); }); b.classList.add("on"); render(); }; });'
+    +'  if(input) input.addEventListener("input", render);'
+    +'  render();'
+    +'});';
+
+  var html='<!DOCTYPE html><html lang="pt-BR" data-theme="'+tema+'"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+    +'<title>Relatório Comercial · Monte Castelo</title>'
+    +'<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+    +'<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">'
+    +'<style>'+css+'</style></head><body><div class="wrap">'
+    +'<header class="rp"><div class="mark">📄</div><div><h1>Monte <span>Castelo</span> · Relatório Comercial</h1>'
+    +'<div class="meta">Período: '+periodo+' &nbsp;·&nbsp; Gerado em '+gerado+'</div></div></header>'
+    +'<div class="pr"><button onclick="window.print()">🖨️ Imprimir / salvar em PDF</button></div>'
+    +'<div class="kpis">'+kpisHtml+'</div>'
+    +secHtml
+    +'<script>'+innerJs+'<'+'/script></body></html>';
 
   var w=window.open('','_blank');
   if(!w){ alert('O navegador bloqueou a nova aba. Permita pop-ups para este site.'); return; }
