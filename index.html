@@ -612,9 +612,19 @@ window.relatorioCompleto=function(){
     +secHtml
     +'<script>'+innerJs+'<'+'/script></body></html>';
 
-  var w=window.open('','_blank');
-  if(!w){ alert('O navegador bloqueou a nova aba. Permita pop-ups para este site.'); return; }
-  w.document.open(); w.document.write(html); w.document.close();
+  // Abre como documento real (Blob URL) -> URL blob: em vez de about:blank,
+  // e os cliques/busca sempre respondem. Fallback p/ document.write se algo falhar.
+  try {
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var w = window.open(url, '_blank');
+    if(!w){ URL.revokeObjectURL(url); alert('O navegador bloqueou a nova aba. Permita pop-ups para este site.'); return; }
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+  } catch(e) {
+    var w2 = window.open('', '_blank');
+    if(!w2){ alert('O navegador bloqueou a nova aba. Permita pop-ups para este site.'); return; }
+    w2.document.open(); w2.document.write(html); w2.document.close();
+  }
 };
 function numCompact(v){ v=v||0; if(v>=1e6) return (v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:2})+'M'; if(v>=1e3) return Math.round(v/1e3).toLocaleString('pt-BR')+'k'; return String(Math.round(v)); }
 function faturamentoChart(mensalArr){
