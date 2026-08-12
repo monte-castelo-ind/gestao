@@ -441,6 +441,12 @@
         <div id="cm-rel-barra" style="display:none;justify-content:flex-end;margin-bottom:12px;">
           <button onclick="relatorioCompleto()" title="Relatório completo do período exibido" style="display:inline-flex;align-items:center;gap:7px;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;">📄 Relatório completo</button>
         </div>
+        <div id="cm-setor-barra" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:12px;color:var(--muted);margin-right:2px;">Setor:</span>
+          <button class="chip cm-setor active" data-s="" onclick="setSetorCom('')">Todos</button>
+          <button class="chip cm-setor" data-s="conf" onclick="setSetorCom('conf')">Confeitaria</button>
+          <button class="chip cm-setor" data-s="quadra" onclick="setSetorCom('quadra')">Quadra (Panificação)</button>
+        </div>
         <div class="grid cols-4" id="cm-kpis"></div>
         <div class="grid cols-3" style="margin-top:16px;">
           <div class="card"><div class="card-title">Meta × Realizado</div><div class="card-sub">R$ · no período</div><div id="cm-meta"></div></div>
@@ -484,7 +490,7 @@ const configProducao = { apiKey:"AIzaSyDY5ma_NbCmZ2dyXUjKm6GZQ3ibhwgcdmI", authD
 const appProd = initializeApp(configProducao, 'producao');
 const dbProd = getFirestore(appProd);
 
-let periodo='mes', pagina='overview', filtroAno='', filtroMes='', filtroDe='', filtroAte='', filtroSemana='';
+let periodo='mes', pagina='overview', filtroAno='', filtroMes='', filtroDe='', filtroAte='', filtroSemana='', filtroSetorCom='';
 let estoque=[], chamados=[], registros=[], prodCatalog={}, presencas=[], quadraRegistros=[], comercialMensal=[], comercialDiario=[], pesosItens=[];
 let subE=null, subC=null, subR=null, subCat=null, subPres=null, subCfg=null, subQuad=null, subCM=null, subCD=null, subPesos=null;
 let sessaoEmail='', currentRole=null, currentAtivo=false, currentRelatorios=false;
@@ -832,10 +838,11 @@ window.relatorioCompleto=function(){
   }
 };
 function numCompact(v){ v=v||0; if(v>=1e6) return (v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:2})+'M'; if(v>=1e3) return Math.round(v/1e3).toLocaleString('pt-BR')+'k'; return String(Math.round(v)); }
-function faturamentoChart(mensalArr){
+function faturamentoChart(mensalArr, setor){
   const now=new Date(); const meses=[];
   for(let i=11;i>=0;i--){ const dd=new Date(now.getFullYear(),now.getMonth()-i,1); meses.push({ym:dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0'), d:dd}); }
-  const mapa={}; mensalArr.forEach(x=>mapa[x.periodo]=x.faturamento||0);
+  const _fatOf=x=> setor ? ((x.setores&&x.setores[setor])?(x.setores[setor].faturamento||0):0) : (x.faturamento||0);
+  const mapa={}; mensalArr.forEach(x=>mapa[x.periodo]=_fatOf(x));
   const curYm=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   const vals=meses.map(m=>mapa[m.ym]||0);
   const anoAnt=meses.map(m=>{ const dd=new Date(m.d.getFullYear()-1,m.d.getMonth(),1); const ym=dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0'); return mapa[ym]||0; });
@@ -883,7 +890,8 @@ function rankingHTML(itens, fmtFn, neutro){
 }
 function mesesNoRange(de, ate){ const out=[]; let d=new Date(de.getFullYear(),de.getMonth(),1); const end=new Date(ate.getFullYear(),ate.getMonth(),1); let g=0; while(d<=end && g<400){ out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); d.setMonth(d.getMonth()+1); g++; } return out; }
 function shiftMonth(ym, delta){ const d=new Date(+ym.slice(0,4), +ym.slice(5,7)-1+delta, 1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
-function fatMeses(meses){ return meses.reduce((a,ym)=>{ const d=comercialMensal.find(x=>x.periodo===ym); return a+(d?(d.faturamento||0):0); },0); }
+function fatMeses(meses, setor){ return meses.reduce((a,ym)=>{ const d=comercialMensal.find(x=>x.periodo===ym); if(!d) return a; const f=setor?((d.setores&&d.setores[setor])?(d.setores[setor].faturamento||0):0):(d.faturamento||0); return a+f; },0); }
+window.setSetorCom=function(s){ filtroSetorCom=s||''; document.querySelectorAll('.cm-setor').forEach(b=>b.classList.toggle('active', (b.dataset.s||'')===filtroSetorCom)); render(); };
 function setaPct(base, atual){ if(!base) return '<span style="color:var(--muted);">—</span>'; const pct=(atual-base)/base*100, up=pct>=0, cor=up?'#16b364':'#ef4444', s=up?'▲':'▼'; return '<span style="color:'+cor+';font-weight:800;">'+s+' '+(up?'+':'')+pct.toFixed(1).replace('.',',')+'%</span>'; }
 function barsQtdHTML(itens,vazio){ if(!itens.length){ return '<div class="empty">'+(vazio||'Sem dados no período.')+'</div>'; } const max=Math.max.apply(null,itens.map(x=>x.val).concat([1])); return itens.map((it,i)=>{ const cor=CORES[i%CORES.length],w=Math.round(it.val/max*100); return '<div class="bar-row"><div class="bar-head"><span class="legend-name">'+esc(it.nome)+'</span><span class="legend-val">'+Math.round(it.val).toLocaleString('pt-BR')+' un</span></div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;background:'+cor+';"></div></div></div>'; }).join(''); }
 function fmtMoneyCompact(v){ v=v||0; if(v>=1e6) return 'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+'M'; if(v>=1e3) return 'R$ '+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+'k'; return 'R$ '+Math.round(v).toLocaleString('pt-BR'); }
@@ -1291,19 +1299,21 @@ function render(){
     let docs;
     if(usarMensal){ docs=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=rr.de && ini<=rr.ate; }); }
     else { docs=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=rr.de && dt<=rr.ate; }); }
-    const fat=docs.reduce((a,d)=>a+(d.faturamento||0),0);
-    const reg=docs.reduce((a,d)=>a+(d.registros||0),0);
-    const notas=docs.reduce((a,d)=>a+(d.notas||0),0);
+    const S=filtroSetorCom;
+    const srcCom=d=> S ? ((d.setores&&d.setores[S])?d.setores[S]:null) : d;
+    const fat=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.faturamento||0):0); },0);
+    const reg=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.registros||0):0); },0);
+    const notas=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.notas||0):0); },0);
     const mC={},mP={},mR={},mV={},mRep={},mTipo={}, mTipoKg={}, mPQ={};
-    docs.forEach(d=>{ mergeMapa(mC,d.clientes); mergeMapa(mP,d.produtos); mergeMapa(mR,d.regioes); mergeMapa(mV,d.vendedores); mergeMapa(mRep,d.representantes); mergeMapa(mTipo,d.tiposProduto); mergeMapa(mTipoKg,d.tiposProdutoKg); mergeMapa(mPQ,d.produtosQtd); });
+    docs.forEach(d=>{ const s=srcCom(d); if(!s) return; mergeMapa(mC,s.clientes); mergeMapa(mP,s.produtos); mergeMapa(mR,s.regioes); mergeMapa(mV,s.vendedores); mergeMapa(mRep,s.representantes); mergeMapa(mTipo,s.tiposProduto); mergeMapa(mTipoKg,s.tiposProdutoKg); mergeMapa(mPQ,s.produtosQtd); });
     // período anterior (mesmo tamanho) para comparativo/alertas
     const _durC=rr.ate-rr.de;
     const _antDeC=new Date(rr.de.getTime()-_durC-1), _antAteC=new Date(rr.de.getTime()-1);
     let docsAnt; if(usarMensal){ docsAnt=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_antDeC && ini<=_antAteC; }); }
                  else { docsAnt=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=_antDeC && dt<=_antAteC; }); }
-    const fatAnt=docsAnt.reduce((a,d)=>a+(d.faturamento||0),0), notasAnt=docsAnt.reduce((a,d)=>a+(d.notas||0),0);
+    const fatAnt=docsAnt.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.faturamento||0):0); },0), notasAnt=docsAnt.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.notas||0):0); },0);
     const mCa={},mPa={},mPQa={};
-    docsAnt.forEach(d=>{ mergeMapa(mCa,d.clientes); mergeMapa(mPa,d.produtos); mergeMapa(mPQa,d.produtosQtd); });
+    docsAnt.forEach(d=>{ const s=srcCom(d); if(!s) return; mergeMapa(mCa,s.clientes); mergeMapa(mPa,s.produtos); mergeMapa(mPQa,s.produtosQtd); });
     const _ddmm=function(dt){ return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear(); };
     window.__relCom={ periodo:((periodo==='tudo')?'Todo o período':(String(rr.de.getDate()).padStart(2,'0')+'/'+String(rr.de.getMonth()+1).padStart(2,'0')+'/'+rr.de.getFullYear()+' – '+String(rr.ate.getDate()).padStart(2,'0')+'/'+String(rr.ate.getMonth()+1).padStart(2,'0')+'/'+rr.ate.getFullYear())), fat:fat, notas:notas, ticket:(notas?fat/notas:0), clientesDistintos:Object.keys(mC).length, mC:mC, mP:mP, mR:mR, mV:mV, mRep:mRep, mTipo:mTipo, mTipoKg:mTipoKg, mPQ:mPQ, prev:{ fat:fatAnt, notas:notasAnt, mC:mCa, mP:mPa, mPQ:mPQa, periodo:((periodo==='tudo')?'—':(_ddmm(_antDeC)+' – '+_ddmm(_antAteC))) } };
     document.getElementById('cm-kpis').innerHTML=
@@ -1311,7 +1321,7 @@ function render(){
       kpiCard('Notas fiscais', notas.toLocaleString('pt-BR'), '🧾','#3b6ef5')+
       kpiCard('Ticket médio', fmtMoney(notas?fat/notas:0), '🎯','#f5b013')+
       kpiCard('Clientes distintos', Object.keys(mC).length.toLocaleString('pt-BR'), '👥','#8b5cf6');
-    document.getElementById('cm-mes').innerHTML=faturamentoChart(comercialMensal);
+    document.getElementById('cm-mes').innerHTML=faturamentoChart(comercialMensal, S);
     document.getElementById('cm-clientes').innerHTML=rankingHTML(mapaParaArr(mC,8), fmtMoney);
     document.getElementById('cm-produtos').innerHTML=lollipopHTML(mapaParaArr(mP,8), fmtMoney);
     document.getElementById('cm-rep-mais').innerHTML=rankingHTML(mapaParaArr(mRep,8), fmtMoney);
@@ -1324,15 +1334,15 @@ function render(){
     document.getElementById('cm-meta').innerHTML=renderMetaGauge(fat, metaDoPeriodo('comercial'), fmtMoney);
     // item 1: comparativo (base mensal)
     const _meses=mesesNoRange(rr.de,rr.ate), _n=_meses.length||1, _primeiro=_meses[0]||shiftMonth(new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0'),0);
-    const _fatR=fatMeses(_meses);
-    const _mesesAnt=[]; for(let i=_n;i>=1;i--) _mesesAnt.push(shiftMonth(_primeiro,-i)); const _fatAnt=fatMeses(_mesesAnt);
-    const _fatAno=fatMeses(_meses.map(ym=>shiftMonth(ym,-12)));
+    const _fatR=fatMeses(_meses, S);
+    const _mesesAnt=[]; for(let i=_n;i>=1;i--) _mesesAnt.push(shiftMonth(_primeiro,-i)); const _fatAnt=fatMeses(_mesesAnt, S);
+    const _fatAno=fatMeses(_meses.map(ym=>shiftMonth(ym,-12)), S);
     document.getElementById('cm-comp').innerHTML='<div style="margin:4px 0;"><div style="font-size:13px;color:var(--muted);">vs período anterior</div><div style="font-size:22px;">'+setaPct(_fatAnt,_fatR)+'</div><div style="font-size:11px;color:var(--muted);">'+(_fatAnt?fmtMoney(_fatAnt):'sem dado')+'</div></div>'+'<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;"><div style="font-size:13px;color:var(--muted);">vs ano passado</div><div style="font-size:22px;">'+setaPct(_fatAno,_fatR)+'</div><div style="font-size:11px;color:var(--muted);">'+(_fatAno?fmtMoney(_fatAno):'sem dado')+'</div></div>';
     // item 3: curva ABC de clientes
     const _arrC=mapaParaArr(mC,99999), _totC=_arrC.reduce((a,x)=>a+x.val,0), _top10=_arrC.slice(0,10).reduce((a,x)=>a+x.val,0), _pct10=_totC>0?_top10/_totC*100:0;
     document.getElementById('cm-abc').innerHTML='<div style="text-align:center;margin:8px 0;"><div style="font-size:38px;font-weight:800;color:var(--primary);">'+Math.round(_pct10)+'%</div><div style="font-size:13px;color:var(--muted);">do faturamento vem dos <b>10 maiores</b> clientes</div></div><div class="bar-track" style="height:12px;"><div class="bar-fill" style="width:'+Math.min(100,_pct10)+'%;background:var(--primary);"></div></div><div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;">'+_arrC.length.toLocaleString('pt-BR')+' clientes no período</div>';
     // item 9: faturamento por dia da semana
-    const _dow={}; docs.forEach(d=>mergeMapa(_dow,d.porDiaSemana)); const _DIAS=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    const _dow={}; docs.forEach(d=>{ const s=srcCom(d); if(s) mergeMapa(_dow,s.porDiaSemana); }); const _DIAS=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
     document.getElementById('cm-dow').innerHTML=colunasHTML(_DIAS.map((nm,i)=>({nome:nm,val:_dow[String(i)]||0})), fmtMoneyCompact);
   }
   const fmt=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
