@@ -608,8 +608,8 @@ window.relatorioCompleto=function(){
       +'<button class="exp" data-exp="'+id+'" title="Exportar CSV">&#8595; CSV</button>'
       +'</div>'
       +(rodape?'<div style="font-size:11.5px;color:var(--muted);margin:-4px 0 10px;">'+rodape+'</div>':'')
-      +'<table><thead><tr><th class="r">#</th><th>'+col1+'</th><th class="v">Pacotes</th><th class="v">KG</th><th class="v">Faturamento</th></tr></thead>'
-      +'<tbody id="body-'+id+'"></tbody><tfoot id="foot-'+id+'"></tfoot></table></section>';
+      +'<div class="tw"><table><thead><tr><th class="r">#</th><th>'+col1+'</th><th class="v">Pacotes</th><th class="v">KG</th><th class="v">Faturamento</th></tr></thead>'
+      +'<tbody id="body-'+id+'"></tbody><tfoot id="foot-'+id+'"></tfoot></table></div></section>';
   }
   var pkHtml = prodkg.length ? metricSec('pk','Produtos &middot; pacotes &middot; KG &middot; faturamento','Produto','Buscar produto&hellip;','fat',
       (semPeso?'KG = pacotes vendidos &times; peso cadastrado. '+semPeso+' produto(s) sem peso na tabela aparecem com KG 0.':'')) : '';
@@ -644,8 +644,8 @@ window.relatorioCompleto=function(){
       +'<div class="busca">'+svgLupa+'<input id="q-'+id+'" type="text" placeholder="'+buscaPh+'" autocomplete="off"></div>'
       +'<button class="exp" data-exp="'+id+'" title="Exportar CSV">&#8595; CSV</button>'
       +'</div>'
-      +'<table><thead><tr><th class="r">#</th><th>'+col1+'</th><th class="v">Atual</th><th class="v">Anterior</th><th class="v">Varia&ccedil;&atilde;o</th></tr></thead>'
-      +'<tbody id="body-'+id+'"></tbody><tfoot id="foot-'+id+'"></tfoot></table></section>';
+      +'<div class="tw"><table><thead><tr><th class="r">#</th><th>'+col1+'</th><th class="v">Atual</th><th class="v">Anterior</th><th class="v">Varia&ccedil;&atilde;o</th></tr></thead>'
+      +'<tbody id="body-'+id+'"></tbody><tfoot id="foot-'+id+'"></tfoot></table></div></section>';
   }
   var varCliHtml = (temPrev && varCli.length) ? compareSec('vcli','Varia&ccedil;&atilde;o por cliente (vs. anterior)','Cliente','Buscar cliente&hellip;') : '';
   var varProHtml = (temPrev && varPro.length) ? compareSec('vpro','Varia&ccedil;&atilde;o por produto (vs. anterior)','Produto','Buscar produto&hellip;') : '';
@@ -658,8 +658,8 @@ window.relatorioCompleto=function(){
       +'<input id="q-'+sec.id+'" type="text" placeholder="Buscar '+sec.col.toLowerCase()+'&hellip;" autocomplete="off"></div>'
       +'<button class="exp" data-exp="'+sec.id+'" title="Exportar CSV">&#8595; CSV</button>'
       +'</div>'
-      +'<table><thead><tr><th class="r">#</th><th>'+sec.col+'</th><th class="v">Faturamento</th><th class="r">%</th><th class="r">% acum.</th></tr></thead>'
-      +'<tbody id="tb-'+sec.id+'"></tbody><tfoot id="tf-'+sec.id+'"></tfoot></table></section>';
+      +'<div class="tw"><table><thead><tr><th class="r">#</th><th>'+sec.col+'</th><th class="v">Faturamento</th><th class="r">%</th><th class="r">% acum.</th></tr></thead>'
+      +'<tbody id="tb-'+sec.id+'"></tbody><tfoot id="tf-'+sec.id+'"></tfoot></table></div></section>';
   }).join('');
 
   var css='*{box-sizing:border-box;margin:0;padding:0;}'
@@ -689,7 +689,7 @@ window.relatorioCompleto=function(){
     +'.comp{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:12.5px;color:var(--muted);margin-bottom:16px;}'
     +'.comp b{color:var(--text);}'
     +'.alertas{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}'
-    +'.acol{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}'
+    +'.acol{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:0;}'
     +'.ah{font-size:12px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;}'
     +'.ah .ac{background:var(--primary);color:#fff;border-radius:20px;font-size:10px;padding:1px 7px;font-weight:700;}'
     +'.arow{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);}'
@@ -704,6 +704,8 @@ window.relatorioCompleto=function(){
     +'.busca svg{position:absolute;left:10px;opacity:.7;pointer-events:none;}'
     +'.busca input{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:7px 12px 7px 32px;font-size:12.5px;font-family:inherit;width:220px;max-width:52vw;}'
     +'.busca input:focus{outline:none;border-color:var(--primary);}'
+    +'.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;}'
+    +'.tw table{min-width:460px;}'
     +'table{width:100%;border-collapse:collapse;font-size:13px;}'
     +'th{text-align:left;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;border-bottom:1px solid var(--border);padding:8px 6px;}'
     +'td{padding:8px 6px;border-bottom:1px solid var(--border);}'
