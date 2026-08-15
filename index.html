@@ -332,6 +332,9 @@
     <!-- ===== PREDIAL ===== -->
     <div class="page" id="page-predial">
       <div class="content">
+        <div id="p-rel-barra" style="display:none;justify-content:flex-end;margin-bottom:12px;">
+          <button onclick="relatorioPredial()" title="Relatório completo da Manut. Predial no período" style="display:inline-flex;align-items:center;gap:7px;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;">📄 Relatório completo</button>
+        </div>
         <div class="grid cols-4" id="p-kpis"></div>
         <div class="grid cols-3" style="margin-top:16px;">
           <div class="card"><div class="card-title">Chamados por mês</div><div class="card-sub">Últimos 6 meses</div><div id="p-bars"></div></div>
@@ -938,6 +941,95 @@ window.relatorioComodato=function(){
   }
 };
 
+window.relatorioPredial=function(){
+  if(!currentRelatorios){ alert('Relatório restrito.'); return; }
+  var R=window.__relPredial;
+  if(!R){ alert('Abra o painel Manut. Predial para gerar o relatório.'); return; }
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+  var gerado=new Date().toLocaleString('pt-BR');
+  var periodo=esc(R.periodo);
+  var tema=(document.documentElement.getAttribute('data-theme')==='dark')?'dark':'light';
+
+  var kpis=[['Abertos agora',R.kpi.ab],['Em andamento',R.kpi.and],['Concluídos no período',R.kpi.con],['Tempo médio',R.kpi.tempo]];
+  var kpisHtml=kpis.map(function(k){ return '<div class="kpi"><div class="k">'+k[0]+'</div><div class="v">'+esc(k[1])+'</div></div>'; }).join('');
+
+  function sec(id,titulo,cnt,head,body,file){
+    return '<section><div class="sec-top"><h2>'+titulo+(cnt!=null?' <span class="cnt">'+cnt+'</span>':'')+'</h2>'
+      +(file?'<button class="exp" data-csv="t-'+id+'" data-file="'+file+'">&#8595; CSV</button>':'')
+      +'</div><div class="tw"><table id="t-'+id+'"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div></section>';
+  }
+
+  var tot=R.totCon||0;
+  var bSetor=(R.porSetor||[]).map(function(x){ var p=tot>0?(x.val/tot*100):0; return '<tr><td>'+esc(x.nome)+'</td><td class="r">'+x.val+'</td><td class="r">'+p.toFixed(1).replace('.',',')+'%</td></tr>'; }).join('') || '<tr><td colspan="3" class="empty">Sem chamados concluídos no período.</td></tr>';
+  var secSetor=sec('ps','Chamados por setor',(R.porSetor||[]).length,'<tr><th>Setor</th><th class="r">Concluídos</th><th class="r">%</th></tr>',bSetor,'predial_chamados_por_setor.csv');
+
+  var bPrio=(R.prioridade||[]).map(function(x){ return '<tr><td>'+esc(x.nome)+'</td><td class="r">'+x.val+'</td></tr>'; }).join('') || '<tr><td colspan="2" class="empty">Nenhum chamado em aberto.</td></tr>';
+  var secPrio=sec('pp','Backlog por prioridade',(R.prioridade||[]).length,'<tr><th>Prioridade</th><th class="r">Abertos + andamento</th></tr>',bPrio,'predial_backlog_prioridade.csv');
+
+  var bTempo=(R.tempoSetor||[]).map(function(x){ return '<tr><td>'+esc(x.nome)+'</td><td class="r">'+x.val+' d</td></tr>'; }).join('') || '<tr><td colspan="2" class="empty">Sem dados no período.</td></tr>';
+  var secTempo=sec('pt','Tempo médio por setor',null,'<tr><th>Setor</th><th class="r">Dias médios</th></tr>',bTempo,'predial_tempo_por_setor.csv');
+
+  var bMes=(R.chamadosMes||[]).map(function(x){ return '<tr><td>'+esc(x.mes)+'</td><td class="r">'+x.val+'</td></tr>'; }).join('');
+  var secMes=sec('pm','Chamados concluídos por mês',null,'<tr><th>Mês</th><th class="r">Concluídos</th></tr>',bMes,'predial_concluidos_por_mes.csv');
+
+  var bFx=(R.fluxo||[]).map(function(x){ return '<tr><td>'+esc(x.mes)+'</td><td class="r">'+x.ab+'</td><td class="r">'+x.co+'</td></tr>'; }).join('');
+  var secFx=sec('pf','Abertos × Concluídos por mês',null,'<tr><th>Mês</th><th class="r">Abertos</th><th class="r">Concluídos</th></tr>',bFx,'predial_fluxo.csv');
+
+  var css='*{box-sizing:border-box;margin:0;padding:0;}'
+    +':root,html[data-theme="light"]{--bg:#eef1f6;--card:#ffffff;--card2:#f6f8fb;--text:#1c2333;--muted:#8a91a3;--border:#e8ebf1;--primary:#1f8a5f;--amber:#f5b013;--red:#ef4444;--green:#16b364;--shadow:0 1px 2px rgba(20,25,45,.05),0 10px 30px rgba(20,25,45,.045);}'
+    +'html[data-theme="dark"]{--bg:#0f111a;--card:#191c29;--card2:#212536;--text:#e7e9f0;--muted:#868da3;--border:rgba(255,255,255,.07);--primary:#2fae7d;--amber:#f5b013;--red:#f87171;--green:#2fae7d;--shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.28);}'
+    +'body{font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    +'.wrap{max-width:1000px;margin:0 auto;padding:26px 22px 60px;}'
+    +'header.rp{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow);padding:18px 20px;border-radius:16px;margin-bottom:18px;}'
+    +'header.rp .mark{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,var(--primary),var(--amber));display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 auto;}'
+    +'header.rp h1{font-size:19px;font-weight:800;letter-spacing:-.01em;}header.rp h1 span{color:var(--primary);}'
+    +'header.rp .meta{margin-top:3px;font-size:12px;color:var(--muted);}'
+    +'.pr{display:flex;gap:8px;margin:0 0 18px;}'
+    +'.pr button{background:var(--primary);color:#fff;border:none;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;}'
+    +'.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}'
+    +'.kpi{background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow);border-radius:14px;padding:15px 16px;}'
+    +'.kpi .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600;}'
+    +'.kpi .v{font-size:21px;font-weight:800;margin-top:5px;letter-spacing:-.01em;}'
+    +'section{background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow);border-radius:14px;padding:16px 18px;margin-bottom:16px;}'
+    +'.sec-top{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-bottom:12px;}'
+    +'h2{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;}'
+    +'h2 .cnt{font-size:11px;font-weight:500;color:var(--muted);}'
+    +'.exp{margin-left:auto;background:var(--card2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;}'
+    +'.exp:hover{color:var(--primary);border-color:var(--primary);}'
+    +'.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;}'
+    +'table{width:100%;border-collapse:collapse;font-size:13px;min-width:460px;}'
+    +'th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}'
+    +'th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;}'
+    +'td.r,th.r{text-align:right;}'
+    +'tbody tr:last-child td{border-bottom:none;}'
+    +'.empty{color:var(--muted);font-style:italic;padding:10px;text-align:center;}'
+    +'@media print{.pr,.exp{display:none!important;}section,.kpi,header.rp{box-shadow:none;break-inside:avoid;}}';
+
+  var innerJs='function t2c(t){var r=[];t.querySelectorAll("tr").forEach(function(tr){var c=[];tr.querySelectorAll("th,td").forEach(function(x){c.push(String.fromCharCode(34)+x.textContent.trim().replace(/"/g,String.fromCharCode(34)+String.fromCharCode(34))+String.fromCharCode(34));});r.push(c.join(";"));});return r.join("\\r\\n");}'
+    +'document.querySelectorAll("[data-csv]").forEach(function(b){b.onclick=function(){var t=document.getElementById(b.getAttribute("data-csv"));if(!t)return;var csv=String.fromCharCode(65279)+t2c(t);var bl=new Blob([csv],{type:"text/csv;charset=utf-8"});var u=URL.createObjectURL(bl);var a=document.createElement("a");a.href=u;a.download=b.getAttribute("data-file")||"export.csv";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u);},2000);};});';
+
+  var html='<!doctype html><html data-theme="'+tema+'" lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório · Manut. Predial</title><style>'+css+'</style></head><body><div class="wrap">'
+    +'<header class="rp"><div class="mark">🏢</div><div><h1>Monte Castelo <span>· Relatório Manut. Predial</span></h1><div class="meta">Período: '+periodo+' · Gerado em '+gerado+'</div></div></header>'
+    +'<div class="pr"><button onclick="window.print()">🖨️ Imprimir / salvar em PDF</button></div>'
+    +'<div class="kpis">'+kpisHtml+'</div>'
+    +secSetor+secPrio+secTempo+secMes+secFx
+    +'<script>'+innerJs+'<'+'/script></div></body></html>';
+
+  try {
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var w = window.open(url, '_blank');
+    if(!w){ URL.revokeObjectURL(url); alert('O navegador bloqueou a nova aba. Permita pop-ups para este site.'); return; }
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+  } catch(e) {
+    var w2 = window.open('', '_blank');
+    if(!w2){ alert('O navegador bloqueou a nova aba. Permita pop-ups para este site.'); return; }
+    w2.document.open(); w2.document.write(html); w2.document.close();
+  }
+};
+
 function numCompact(v){ v=v||0; if(v>=1e6) return (v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:2})+'M'; if(v>=1e3) return Math.round(v/1e3).toLocaleString('pt-BR')+'k'; return String(Math.round(v)); }
 function faturamentoChart(mensalArr, setor){
   const now=new Date(); const meses=[];
@@ -1337,6 +1429,20 @@ function render(){
     document.getElementById('p-donut').innerHTML = donutHTML(agrupar(pCon,'setor'), pCon.length, 'chamados');
     document.getElementById('p-prio').innerHTML = barsHTML(agrupar(chamados.filter(c=>c.status==='aberto'||c.status==='andamento'),'prioridade'),'Sem chamados em aberto.');
     document.getElementById('p-table').innerHTML = tabelaPredial();
+    (function(){
+      var _dd=function(dt){return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();};
+      var _now=new Date();
+      var _backlog=chamados.filter(function(c){return c.status==='aberto'||c.status==='andamento';});
+      var _tt={}; pCon.forEach(function(c){ var ab=parseBR(c.dataAbertura),co=conclusaoDe(c); if(ab&&co){ var d=Math.round((co-ab)/86400000); if(d>=0){ var k=c.setor||'—'; (_tt[k]=_tt[k]||[]).push(d);} } });
+      var _ttA=Object.keys(_tt).map(function(k){return {nome:k,val:Math.round(_tt[k].reduce(function(a,b){return a+b;},0)/_tt[k].length)};}).sort(function(a,b){return b.val-a.val;});
+      var _cm=[]; for(var i=5;i>=0;i--){var d1=new Date(_now.getFullYear(),_now.getMonth()-i,1);_cm.push({y:d1.getFullYear(),m:d1.getMonth(),val:0});}
+      chamados.forEach(function(c){var co=conclusaoDe(c); if(!co)return; for(var j=0;j<_cm.length;j++){ if(co.getFullYear()===_cm[j].y&&co.getMonth()===_cm[j].m){_cm[j].val++;break;} }});
+      var _cmA=_cm.map(function(b){return {mes:MESES[b.m]+'/'+String(b.y).slice(2),val:b.val};});
+      var _fx=[]; for(var i2=5;i2>=0;i2--){var d2=new Date(_now.getFullYear(),_now.getMonth()-i2,1);_fx.push({y:d2.getFullYear(),m:d2.getMonth(),ab:0,co:0});}
+      chamados.forEach(function(c){var ab=parseBR(c.dataAbertura),co=conclusaoDe(c); _fx.forEach(function(b){ if(ab&&ab.getFullYear()===b.y&&ab.getMonth()===b.m)b.ab++; if(co&&co.getFullYear()===b.y&&co.getMonth()===b.m)b.co++; });});
+      var _fxA=_fx.map(function(b){return {mes:MESES[b.m]+'/'+String(b.y).slice(2),ab:b.ab,co:b.co};});
+      window.__relPredial={ periodo:(_dd(r.de)+' – '+_dd(r.ate)), kpi:{ab:pAb,and:pAnd,con:pCon.length,tempo:tempoMedio(pCon)}, porSetor:agrupar(pCon,'setor'), totCon:pCon.length, prioridade:agrupar(_backlog,'prioridade'), tempoSetor:_ttA, chamadosMes:_cmA, fluxo:_fxA };
+    })();
   }
 
   // ===== PRODUÇÃO =====
@@ -1530,6 +1636,8 @@ function liberar(d){
   if(_rb) _rb.style.display = currentRelatorios ? 'flex' : 'none';
   var _rbc=document.getElementById('c-rel-barra');
   if(_rbc) _rbc.style.display = currentRelatorios ? 'flex' : 'none';
+  var _rbp=document.getElementById('p-rel-barra');
+  if(_rbp) _rbp.style.display = currentRelatorios ? 'flex' : 'none';
   const nome=d.nome||sessaoEmail; document.getElementById('uname').textContent=nome;
   document.getElementById('uavatar').textContent=(nome||'?').trim().charAt(0).toUpperCase();
   if(!subE){ subE=onSnapshot(collection(dbC,'equipamentosEstoque'), s=>{ estoque=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.error('estoque:',e)); }
