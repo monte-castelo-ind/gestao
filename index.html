@@ -456,6 +456,7 @@
         <div id="cm-rel-barra" style="display:none;justify-content:flex-end;margin-bottom:12px;">
           <button onclick="relatorioCompleto()" title="Relatório completo do período exibido" style="display:inline-flex;align-items:center;gap:7px;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;">📄 Relatório completo</button>
         </div>
+        <div id="cm-status" style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:16px;"></div>
         <div class="grid cols-4" id="cm-kpis"></div>
         <div class="grid cols-3" style="margin-top:16px;">
           <div class="card"><div class="card-title">Meta × Realizado</div><div class="card-sub">R$ · no período</div><div id="cm-meta"></div></div>
@@ -500,8 +501,8 @@ const appProd = initializeApp(configProducao, 'producao');
 const dbProd = getFirestore(appProd);
 
 let periodo='mes', pagina='overview', filtroAno='', filtroMes='', filtroDe='', filtroAte='', filtroSemana='', filtroSetorCom='';
-let estoque=[], chamados=[], registros=[], prodCatalog={}, presencas=[], quadraRegistros=[], comercialMensal=[], comercialDiario=[], pesosItens=[];
-let subE=null, subC=null, subR=null, subCat=null, subPres=null, subCfg=null, subQuad=null, subCM=null, subCD=null, subPesos=null;
+let estoque=[], chamados=[], registros=[], prodCatalog={}, presencas=[], quadraRegistros=[], comercialMensal=[], comercialDiario=[], comercialMeta={}, comCarregado=false, _navRestaurado=false, pesosItens=[];
+let subE=null, subC=null, subR=null, subCat=null, subPres=null, subCfg=null, subQuad=null, subCM=null, subCD=null, subCMeta=null, subPesos=null;
 let sessaoEmail='', currentRole=null, currentAtivo=false, currentRelatorios=false;
 const CORES=['#1f9d6b','#3b6ef5','#f5b013','#12b3a6','#8b7fe8','#6bbf8f','#f08a5d','#a7c4b5'];
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -1030,6 +1031,7 @@ window.relatorioPredial=function(){
   }
 };
 
+function _haQuanto(d){ var ms=Date.now()-d.getTime(); if(ms<0)ms=0; var min=Math.round(ms/60000); if(min<1)return 'agora mesmo'; if(min<60)return 'há '+min+' min'; var h=Math.round(min/60); if(h<24)return 'há '+h+'h'; var dias=Math.round(h/24); return 'há '+dias+(dias===1?' dia':' dias'); }
 function numCompact(v){ v=v||0; if(v>=1e6) return (v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:2})+'M'; if(v>=1e3) return Math.round(v/1e3).toLocaleString('pt-BR')+'k'; return String(Math.round(v)); }
 function faturamentoChart(mensalArr, setor){
   const now=new Date(); const meses=[];
@@ -1526,6 +1528,7 @@ function render(){
     const S=filtroSetorCom;
     const srcCom=d=> S ? ((d.setores&&d.setores[S])?d.setores[S]:null) : d;
     const fat=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.faturamento||0):0); },0);
+    (function(){ var stEl=document.getElementById('cm-status'); if(!stEl) return; if(!comCarregado){ stEl.textContent='⏳ Carregando dados do robô…'; stEl.style.color='var(--muted)'; return; } var parts=[]; var ts=comercialMeta&&comercialMeta.atualizadoEm; var dt=ts&&ts.toDate?ts.toDate():(ts?new Date(ts):null); if(dt) parts.push('Atualizado '+_haQuanto(dt)); if(S){ var temSet=docs.some(function(d){return d.setores;}); if(!temSet) parts.push('⚠️ o corte por setor aparece após o robô rodar com a classificação'); else if(fat===0) parts.push('sem faturamento para '+(S==='conf'?'Confeitaria':'Quadra')+' neste período'); } else if(docs.length===0){ parts.push('sem dados para o período selecionado'); } stEl.innerHTML=parts.join(' · '); stEl.style.color=(dt&&(Date.now()-dt.getTime())>3*3600*1000)?'var(--amber)':'var(--muted)'; })();
     const reg=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.registros||0):0); },0);
     const notas=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.notas||0):0); },0);
     const mC={},mP={},mR={},mV={},mRep={},mTipo={}, mTipoKg={}, mPQ={};
@@ -1577,6 +1580,7 @@ function render(){
 const TITLES={overview:['Visão Geral','Consolidado'],comodato:['Manutenção Comodato','Equipamentos'],predial:['Manutenção Predial','Chamados'],panificacao:['Panificação','Produção · quadra'],confeitaria:['Confeitaria','Produção'],embalacao:['Embalação','Produção · embalagem'],config:['Configurações','Ajustes do painel'],comercial:['Comercial','Faturamento (ERP)']};
 window.nav=function(p){
   pagina=p;
+  try{ localStorage.setItem('mc_last_page',p); }catch(e){}
   periodo='mes'; filtroAno=''; filtroMes=''; filtroDe=''; filtroAte=''; filtroSemana=''; filtroSetorCom='';
   (function(){ var sa=document.getElementById('sel-ano'),sm=document.getElementById('sel-mes'),ss=document.getElementById('sel-semana'),rd=document.getElementById('range-de'),ra=document.getElementById('range-ate'),bx=document.getElementById('range-box'); if(sa)sa.value=''; if(sm)sm.value=''; if(ss)ss.value=''; if(rd)rd.value=''; if(ra)ra.value=''; if(bx)bx.style.display='none'; })();
   (function(){ var w=document.getElementById('setor-wrap'),dv=document.getElementById('setor-div'),sc=document.getElementById('sel-setor-com'); var vis=(p==='comercial'); if(w)w.style.display=vis?'inline-flex':'none'; if(dv)dv.style.display=vis?'inline-block':'none'; if(sc)sc.value=''; })();
@@ -1631,6 +1635,7 @@ function negar(msg){ document.getElementById('negado-msg').textContent=msg; docu
 function liberar(d){
   document.getElementById('s-negado').style.display='none'; document.getElementById('s-negado').classList.remove('active');
   document.getElementById('app').style.display='flex';
+  try{ if(!_navRestaurado){ _navRestaurado=true; var _lp=localStorage.getItem('mc_last_page'); if(_lp && TITLES[_lp] && document.getElementById('page-'+_lp)) nav(_lp); } }catch(e){}
   // botao do relatorio: so quem tem relatorios:true no documento de usuarios
   var _rb=document.getElementById('cm-rel-barra');
   if(_rb) _rb.style.display = currentRelatorios ? 'flex' : 'none';
@@ -1641,8 +1646,9 @@ function liberar(d){
   const nome=d.nome||sessaoEmail; document.getElementById('uname').textContent=nome;
   document.getElementById('uavatar').textContent=(nome||'?').trim().charAt(0).toUpperCase();
   if(!subE){ subE=onSnapshot(collection(dbC,'equipamentosEstoque'), s=>{ estoque=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.error('estoque:',e)); }
-  if(!subCM){ subCM=onSnapshot(collection(dbC,'comercialMensal'), s=>{ comercialMensal=s.docs.map(x=>x.data()); render(); }, e=>console.warn('comercialMensal:',e.code||e.message)); }
+  if(!subCM){ subCM=onSnapshot(collection(dbC,'comercialMensal'), s=>{ comercialMensal=s.docs.map(x=>x.data()); comCarregado=true; render(); }, e=>console.warn('comercialMensal:',e.code||e.message)); }
   if(!subCD){ subCD=onSnapshot(collection(dbC,'comercialDiario'), s=>{ comercialDiario=s.docs.map(x=>x.data()); render(); }, e=>console.warn('comercialDiario:',e.code||e.message)); }
+  if(!subCMeta){ subCMeta=onSnapshot(doc(dbC,'comercialMeta','app'), snap=>{ comercialMeta=snap.exists()?snap.data():{}; render(); }, e=>console.warn('comercialMeta:',e.code||e.message)); }
   if(!subCfg){ subCfg=onSnapshot(doc(dbC,'configGestao','app'), snap=>{ if(snap.exists()){ const dd=snap.data(); if(dd.conf||dd.panif||dd.emb){ if(dd.conf) config.conf=dd.conf; if(dd.panif) config.panif=dd.panif; if(dd.emb) config.emb=dd.emb; if(dd.comercial) config.comercial=dd.comercial; } else { config.conf={metaPadrao:dd.metaPadrao!=null?dd.metaPadrao:META_CONF_KG, metas:dd.metas||{}}; } } render(); }, e=>console.warn('config:',e.code||e.message)); }
   if(!subR){ subR=onSnapshot(collection(dbProd,'registros'), s=>{ registros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('registros (produção):',e.code||e.message)); }
   if(!subQuad){ subQuad=onSnapshot(collection(dbProd,'quadraRegistros'), s=>{ quadraRegistros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('quadraRegistros:',e.code||e.message)); }
