@@ -249,6 +249,10 @@
           <option value="conf">Confeitaria</option>
           <option value="quadra">Quadra (Panificação)</option>
         </select>
+        <span style="font-size:12px;color:var(--muted);margin-left:8px;">Cliente:</span>
+        <select class="chip chip-sel" id="sel-cliente-com" onchange="setClienteCom(this.value)" style="min-width:210px;max-width:300px;">
+          <option value="">Todos os clientes</option>
+        </select>
       </span>
     </div>
 
@@ -467,23 +471,23 @@
         <div id="cm-insights" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:14px;"></div>
         <div class="grid cols-4" id="cm-kpis"></div>
         <div class="grid cols-3" style="margin-top:16px;">
-          <div class="card"><div class="card-title">Meta × Realizado</div><div class="card-sub">R$ · no período</div><div id="cm-meta"></div></div>
+          <div class="card com-global"><div class="card-title">Meta × Realizado</div><div class="card-sub">R$ · no período</div><div id="cm-meta"></div></div>
           <div class="card"><div class="card-title">Evolução</div><div class="card-sub">Comparativo de faturamento</div><div id="cm-comp"></div></div>
-          <div class="card"><div class="card-title">Concentração de clientes</div><div class="card-sub">Curva ABC</div><div id="cm-abc"></div></div>
+          <div class="card com-global"><div class="card-title">Concentração de clientes</div><div class="card-sub">Curva ABC</div><div id="cm-abc"></div></div>
         </div>
         <div class="card" style="margin-top:16px;"><div class="card-title">Faturamento por mês</div><div class="card-sub">Últimos 12 meses · valor, ano anterior e previsão</div><div id="cm-mes"></div></div>
         <div class="grid cols-2" style="margin-top:16px;">
-          <div class="card"><div class="card-title">Faturamento por dia da semana</div><div class="card-sub">Total no período</div><div id="cm-dow"></div></div>
+          <div class="card com-global"><div class="card-title">Faturamento por dia da semana</div><div class="card-sub">Total no período</div><div id="cm-dow"></div></div>
           <div class="card"><div class="card-title">Por região/rota</div><div class="card-sub">No período</div><div id="cm-regioes"></div></div>
         </div>
         <div class="grid cols-2" style="margin-top:16px;">
-          <div class="card"><div class="card-title">Top clientes</div><div class="card-sub">No período · por faturamento</div><div id="cm-clientes"></div></div>
+          <div class="card com-global"><div class="card-title">Top clientes</div><div class="card-sub">No período · por faturamento</div><div id="cm-clientes"></div></div>
           <div class="card"><div class="card-title">Top produtos</div><div class="card-sub">No período · por faturamento</div><div id="cm-produtos"></div></div>
         </div>
         <div class="grid cols-2" style="margin-top:16px;">
           <div class="card"><div class="card-title">Representantes · mais venderam</div><div class="card-sub">No período · por faturamento</div><div id="cm-rep-mais"></div></div>
-          <div class="card"><div class="card-title">Vendas por tipo de produto</div><div class="card-sub">No período · por faturamento</div><div id="cm-tipos"></div></div>
-          <div class="card"><div class="card-title">Vendas por tipo de produto</div><div class="card-sub">No período · por quilo (só itens vendidos em KG)</div><div id="cm-tipos-kg"></div></div>
+          <div class="card com-global"><div class="card-title">Vendas por tipo de produto</div><div class="card-sub">No período · por faturamento</div><div id="cm-tipos"></div></div>
+          <div class="card com-global"><div class="card-title">Vendas por tipo de produto</div><div class="card-sub">No período · por quilo (só itens vendidos em KG)</div><div id="cm-tipos-kg"></div></div>
         </div>
       </div>
     </div>
@@ -508,9 +512,10 @@ const configProducao = { apiKey:"AIzaSyDY5ma_NbCmZ2dyXUjKm6GZQ3ibhwgcdmI", authD
 const appProd = initializeApp(configProducao, 'producao');
 const dbProd = getFirestore(appProd);
 
-let periodo='mes', pagina='overview', filtroAno='', filtroMes='', filtroDe='', filtroAte='', filtroSemana='', filtroSetorCom='';
+let periodo='mes', pagina='overview', filtroAno='', filtroMes='', filtroDe='', filtroAte='', filtroSemana='', filtroSetorCom='', filtroClienteCom='';
 let estoque=[], chamados=[], registros=[], prodCatalog={}, presencas=[], quadraRegistros=[], comercialMensal=[], comercialDiario=[], comercialMeta={}, comCarregado=false, _navRestaurado=false, pesosItens=[];
-let subE=null, subC=null, subR=null, subCat=null, subPres=null, subCfg=null, subQuad=null, subCM=null, subCD=null, subCMeta=null, subPesos=null;
+let comercialClienteMes=[];   // um doc por mês com o detalhe de cada cliente
+let subE=null, subC=null, subR=null, subCat=null, subPres=null, subCfg=null, subQuad=null, subCM=null, subCD=null, subCMeta=null, subPesos=null, subCC=null;
 let setoresProdutoCfg=null; var _setTipos=[];
 const SETORES_DEFAULT={PAO_FRANCES:'quadra',MIUDEZA:'quadra',CUCAS:'quadra',PAO_DE_QUEIJO:'conf',MASSA_FOLHADA:'conf',SALGADOS_LANCHE:'conf',SALGADOS_KG:'conf'};
 let sessaoEmail='', currentRole=null, currentAtivo=false, currentRelatorios=false;
@@ -1098,6 +1103,55 @@ function mesesNoRange(de, ate){ const out=[]; let d=new Date(de.getFullYear(),de
 function shiftMonth(ym, delta){ const d=new Date(+ym.slice(0,4), +ym.slice(5,7)-1+delta, 1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function fatMeses(meses, setor){ return meses.reduce((a,ym)=>{ const d=comercialMensal.find(x=>x.periodo===ym); if(!d) return a; const f=setor?((d.setores&&d.setores[setor])?(d.setores[setor].faturamento||0):0):(d.faturamento||0); return a+f; },0); }
 window.setSetorCom=function(s){ filtroSetorCom=s||''; render(); };
+window.setClienteCom=function(c){ filtroClienteCom=c||''; render(); };
+
+/* ===== filtro de cliente =====
+   O robô grava comercialClienteMes/{YYYY-MM} com o detalhe de cada cliente.
+   Com um cliente selecionado, monta-se um documento por mês no MESMO formato
+   dos buckets de comercialMensal — assim todo o resto do render continua igual.
+   Os mapas que não existem por cliente (dia da semana, tipo de produto) ficam
+   vazios de propósito, e os cartões correspondentes são escondidos.          */
+function clientesDisponiveis(){
+  var uni={};
+  comercialClienteMes.forEach(function(d){
+    var cs=d.clientes||{};
+    Object.keys(cs).forEach(function(k){ if(!uni[k]) uni[k]=cs[k].nome||k; });
+  });
+  return Object.keys(uni).map(function(k){ return { chave:k, nome:uni[k] }; })
+    .sort(function(a,b){ return String(a.nome).localeCompare(String(b.nome),'pt-BR'); });
+}
+function pintarSelCliente(){
+  var el=document.getElementById('sel-cliente-com'); if(!el) return;
+  var lista=clientesDisponiveis();
+  var atual=filtroClienteCom;
+  if(el.dataset.n!==String(lista.length)){
+    el.innerHTML='<option value="">Todos os clientes ('+lista.length+')</option>'+
+      lista.map(function(c){ return '<option value="'+esc(c.chave)+'">'+esc(c.nome)+'</option>'; }).join('');
+    el.dataset.n=String(lista.length);
+  }
+  if(el.value!==atual) el.value=atual;
+}
+// documentos sintéticos no formato de comercialMensal, só do cliente escolhido
+function docsDoCliente(chave){
+  var out=[];
+  comercialClienteMes.forEach(function(d){
+    var c=(d.clientes||{})[chave];
+    if(!c) return;
+    var reg={}; if(c.reg) reg[c.reg]=c.fat||0;
+    var vend={}; if(c.vend) vend[c.vend]=c.fat||0;
+    var repm={}; if(c.rep) repm[c.rep]=c.fat||0;
+    var cli={}; cli[c.nome||chave]=c.fat||0;
+    out.push({
+      periodo:d.periodo,
+      faturamento:c.fat||0, notas:c.notas||0, registros:c.notas||0,
+      clientes:cli, produtos:c.prod||{}, regioes:reg,
+      vendedores:vend, representantes:repm,
+      tiposProduto:{}, tiposProdutoKg:{}, produtosQtd:{}, porDiaSemana:{},
+      _cliente:true
+    });
+  });
+  return out;
+}
 function setaPct(base, atual){ if(!base) return '<span style="color:var(--muted);">—</span>'; const pct=(atual-base)/base*100, up=pct>=0, cor=up?'#16b364':'#ef4444', s=up?'▲':'▼'; return '<span style="color:'+cor+';font-weight:800;">'+s+' '+(up?'+':'')+pct.toFixed(1).replace('.',',')+'%</span>'; }
 function barsQtdHTML(itens,vazio){ if(!itens.length){ return '<div class="empty">'+(vazio||'Sem dados no período.')+'</div>'; } const max=Math.max.apply(null,itens.map(x=>x.val).concat([1])); return itens.map((it,i)=>{ const cor=CORES[i%CORES.length],w=Math.round(it.val/max*100); return '<div class="bar-row"><div class="bar-head"><span class="legend-name">'+esc(it.nome)+'</span><span class="legend-val">'+Math.round(it.val).toLocaleString('pt-BR')+' un</span></div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;background:'+cor+';"></div></div></div>'; }).join(''); }
 function fmtMoneyCompact(v){ v=v||0; if(v>=1e6) return 'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+'M'; if(v>=1e3) return 'R$ '+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+'k'; return 'R$ '+Math.round(v).toLocaleString('pt-BR'); }
@@ -1536,14 +1590,22 @@ function render(){
   if(pagina==='config'){ pintarMetasLista(); renderPesos(); }
   if(pagina==='comercial'){
     const rr=range();
-    const usarMensal=(periodo==='tudo')||(filtroAno!=='');
+    pintarSelCliente();
+    const CLI=filtroClienteCom;
+    // por cliente só existe apuração MENSAL: o robô não guarda cliente por dia
+    const usarMensal=CLI ? true : ((periodo==='tudo')||(filtroAno!==''));
     let docs;
-    if(usarMensal){ docs=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=rr.de && ini<=rr.ate; }); }
+    if(CLI){
+      docs=docsDoCliente(CLI).filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=rr.de && ini<=rr.ate; });
+    }
+    else if(usarMensal){ docs=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=rr.de && ini<=rr.ate; }); }
     else { docs=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=rr.de && dt<=rr.ate; }); }
-    const S=filtroSetorCom;
+    // cartões que não fazem sentido para um cliente só saem de cena
+    document.querySelectorAll('.com-global').forEach(function(el){ el.style.display=CLI?'none':''; });
+    const S=CLI?'':filtroSetorCom;   // cliente × setor não existe na base
     const srcCom=d=> S ? ((d.setores&&d.setores[S])?d.setores[S]:null) : d;
     const fat=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.faturamento||0):0); },0);
-    (function(){ var stEl=document.getElementById('cm-status'); if(!stEl) return; if(!comCarregado){ stEl.textContent='⏳ Carregando dados do robô…'; stEl.style.color='var(--muted)'; return; } var parts=[]; var ts=comercialMeta&&comercialMeta.atualizadoEm; var dt=ts&&ts.toDate?ts.toDate():(ts?new Date(ts):null); if(dt) parts.push('Atualizado '+_haQuanto(dt)); if(S){ var temSet=docs.some(function(d){return d.setores;}); if(!temSet) parts.push('⚠️ o corte por setor aparece após o robô rodar com a classificação'); else if(fat===0) parts.push('sem faturamento para '+(S==='conf'?'Confeitaria':'Quadra')+' neste período'); } else if(docs.length===0){ parts.push('sem dados para o período selecionado'); } stEl.innerHTML=parts.join(' · '); stEl.style.color=(dt&&(Date.now()-dt.getTime())>3*3600*1000)?'var(--amber)':'var(--muted)'; })();
+    (function(){ var stEl=document.getElementById('cm-status'); if(!stEl) return; if(!comCarregado){ stEl.textContent='⏳ Carregando dados do robô…'; stEl.style.color='var(--muted)'; return; } var parts=[]; var ts=comercialMeta&&comercialMeta.atualizadoEm; var dt=ts&&ts.toDate?ts.toDate():(ts?new Date(ts):null); if(dt) parts.push('Atualizado '+_haQuanto(dt)); if(S){ var temSet=docs.some(function(d){return d.setores;}); if(!temSet) parts.push('⚠️ o corte por setor aparece após o robô rodar com a classificação'); else if(fat===0) parts.push('sem faturamento para '+(S==='conf'?'Confeitaria':'Quadra')+' neste período'); } else if(docs.length===0){ parts.push('sem dados para o período selecionado'); } if(CLI){ var _nc=(comercialClienteMes[0]&&comercialClienteMes[0].topProdutos)||15; parts.push('cliente selecionado: apuração por mês inteiro, top '+_nc+' produtos'); } stEl.innerHTML=parts.join(' · '); stEl.style.color=(dt&&(Date.now()-dt.getTime())>3*3600*1000)?'var(--amber)':'var(--muted)'; })();
     const reg=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.registros||0):0); },0);
     const notas=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.notas||0):0); },0);
     const mC={},mP={},mR={},mV={},mRep={},mTipo={}, mTipoKg={}, mPQ={};
@@ -1551,8 +1613,10 @@ function render(){
     // período anterior (mesmo tamanho) para comparativo/alertas
     const _durC=rr.ate-rr.de;
     const _antDeC=new Date(rr.de.getTime()-_durC-1), _antAteC=new Date(rr.de.getTime()-1);
-    let docsAnt; if(usarMensal){ docsAnt=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_antDeC && ini<=_antAteC; }); }
-                 else { docsAnt=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=_antDeC && dt<=_antAteC; }); }
+    let docsAnt;
+    if(CLI){ docsAnt=docsDoCliente(CLI).filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_antDeC && ini<=_antAteC; }); }
+    else if(usarMensal){ docsAnt=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_antDeC && ini<=_antAteC; }); }
+    else { docsAnt=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=_antDeC && dt<=_antAteC; }); }
     const fatAnt=docsAnt.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.faturamento||0):0); },0), notasAnt=docsAnt.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.notas||0):0); },0);
     const mCa={},mPa={},mPQa={};
     docsAnt.forEach(d=>{ const s=srcCom(d); if(!s) return; mergeMapa(mCa,s.clientes); mergeMapa(mPa,s.produtos); mergeMapa(mPQa,s.produtosQtd); });
@@ -1565,8 +1629,13 @@ function render(){
       kpiCard('Faturamento', fmtMoney(fat), '💰','#1f9d6b', null, _spk.fat)+
       kpiCard('Notas fiscais', notas.toLocaleString('pt-BR'), '🧾','#3b6ef5', null, _spk.notas)+
       kpiCard('Ticket médio', fmtMoney(notas?fat/notas:0), '🎯','#f5b013', null, _spk.ticket)+
-      kpiCard('Clientes distintos', Object.keys(mC).length.toLocaleString('pt-BR'), '👥','#8b5cf6');
-    document.getElementById('cm-mes').innerHTML=faturamentoChart(comercialMensal, S);
+      (CLI
+        ? kpiCard('Participação no total', (function(){
+            var tot=0; comercialMensal.forEach(function(d){ var ini=mesData(d.periodo); var fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); if(fim>=rr.de&&ini<=rr.ate) tot+=(d.faturamento||0); });
+            return tot>0 ? (fat/tot*100).toFixed(1).replace('.',',')+'%' : '–';
+          })(), '🥇','#8b5cf6')
+        : kpiCard('Clientes distintos', Object.keys(mC).length.toLocaleString('pt-BR'), '👥','#8b5cf6'));
+    document.getElementById('cm-mes').innerHTML=faturamentoChart(CLI?docsDoCliente(CLI):comercialMensal, S);
     document.getElementById('cm-clientes').innerHTML=rankingHTML(mapaParaArr(mC,8), fmtMoney);
     document.getElementById('cm-produtos').innerHTML=lollipopHTML(mapaParaArr(mP,8), fmtMoney);
     document.getElementById('cm-rep-mais').innerHTML=rankingHTML(mapaParaArr(mRep,8), fmtMoney);
@@ -1599,9 +1668,9 @@ const TITLES={overview:['Visão Geral','Consolidado'],comodato:['Manutenção Co
 window.nav=function(p){
   pagina=p;
   try{ localStorage.setItem('mc_last_page',p); }catch(e){}
-  periodo='mes'; filtroAno=''; filtroMes=''; filtroDe=''; filtroAte=''; filtroSemana=''; filtroSetorCom='';
+  periodo='mes'; filtroAno=''; filtroMes=''; filtroDe=''; filtroAte=''; filtroSemana=''; filtroSetorCom=''; filtroClienteCom='';
   (function(){ var sa=document.getElementById('sel-ano'),sm=document.getElementById('sel-mes'),ss=document.getElementById('sel-semana'),rd=document.getElementById('range-de'),ra=document.getElementById('range-ate'),bx=document.getElementById('range-box'); if(sa)sa.value=''; if(sm)sm.value=''; if(ss)ss.value=''; if(rd)rd.value=''; if(ra)ra.value=''; if(bx)bx.style.display='none'; })();
-  (function(){ var w=document.getElementById('setor-wrap'),dv=document.getElementById('setor-div'),sc=document.getElementById('sel-setor-com'); var vis=(p==='comercial'); if(w)w.style.display=vis?'inline-flex':'none'; if(dv)dv.style.display=vis?'inline-block':'none'; if(sc)sc.value=''; })();
+  (function(){ var w=document.getElementById('setor-wrap'),dv=document.getElementById('setor-div'),sc=document.getElementById('sel-setor-com'),cc=document.getElementById('sel-cliente-com'); var vis=(p==='comercial'); if(w)w.style.display=vis?'inline-flex':'none'; if(dv)dv.style.display=vis?'inline-block':'none'; if(sc)sc.value=''; filtroSetorCom=''; if(cc)cc.value=''; filtroClienteCom=''; })();
   if(['panificacao','confeitaria','embalacao'].indexOf(p)>=0){ const s=document.getElementById('prod-sub'); if(s){ s.style.display='block'; document.getElementById('prod-chevron').textContent='▾'; } }
   document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===p));
   document.querySelectorAll('.page[id^="page-"]').forEach(pg=>pg.classList.remove('active'));
@@ -1666,6 +1735,7 @@ function liberar(d){
   if(!subE){ subE=onSnapshot(collection(dbC,'equipamentosEstoque'), s=>{ estoque=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.error('estoque:',e)); }
   if(!subCM){ subCM=onSnapshot(collection(dbC,'comercialMensal'), s=>{ comercialMensal=s.docs.map(x=>x.data()); comCarregado=true; render(); }, e=>console.warn('comercialMensal:',e.code||e.message)); }
   if(!subCD){ subCD=onSnapshot(collection(dbC,'comercialDiario'), s=>{ comercialDiario=s.docs.map(x=>x.data()); render(); }, e=>console.warn('comercialDiario:',e.code||e.message)); }
+  if(!subCC){ subCC=onSnapshot(collection(dbC,'comercialClienteMes'), s=>{ comercialClienteMes=s.docs.map(x=>x.data()); render(); }, e=>console.warn('comercialClienteMes:',e.code||e.message)); }
   if(!subCMeta){ subCMeta=onSnapshot(doc(dbC,'comercialMeta','app'), snap=>{ comercialMeta=snap.exists()?snap.data():{}; render(); }, e=>console.warn('comercialMeta:',e.code||e.message)); }
   if(!subCfg){ subCfg=onSnapshot(doc(dbC,'configGestao','app'), snap=>{ if(snap.exists()){ const dd=snap.data(); if(dd.setoresProduto) setoresProdutoCfg=dd.setoresProduto; if(dd.conf||dd.panif||dd.emb){ if(dd.conf) config.conf=dd.conf; if(dd.panif) config.panif=dd.panif; if(dd.emb) config.emb=dd.emb; if(dd.comercial) config.comercial=dd.comercial; if(dd.comercialConf) config.comercialConf=dd.comercialConf; if(dd.comercialQuadra) config.comercialQuadra=dd.comercialQuadra; } else { config.conf={metaPadrao:dd.metaPadrao!=null?dd.metaPadrao:META_CONF_KG, metas:dd.metas||{}}; } } render(); }, e=>console.warn('config:',e.code||e.message)); }
   if(!subR){ subR=onSnapshot(collection(dbProd,'registros'), s=>{ registros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('registros (produção):',e.code||e.message)); }
