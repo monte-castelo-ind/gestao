@@ -197,6 +197,7 @@
     <div class="nav-label">Painéis</div>
     <button class="nav-item active" data-page="overview" onclick="nav('overview')"><span class="ico">📊</span> Visão Geral</button>
     <button class="nav-item" data-page="comercial" onclick="nav('comercial')"><span class="ico">💰</span> Comercial</button>
+    <button class="nav-item" data-page="prodmes" onclick="nav('prodmes')"><span class="ico">📅</span> Produtos mês a mês</button>
     <button class="nav-item" onclick="toggleProducao()"><span class="ico">🏭</span> Produção <span class="chevron" id="prod-chevron">▸</span></button>
     <div class="nav-sub" id="prod-sub" style="display:none;">
       <button class="nav-item" data-page="panificacao" onclick="nav('panificacao')"><span class="ico">🍞</span> Panificação</button>
@@ -462,6 +463,42 @@
         </div>
       </div>
     </div>
+    <!-- ===== PRODUTOS MÊS A MÊS ===== -->
+    <div class="page" id="page-prodmes">
+      <div class="content">
+        <div id="pm-status" style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:16px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+          <span style="font-size:12px;color:var(--muted);">Medida:</span>
+          <button class="chip" id="pm-m-fat" onclick="setPmMetrica('fat')">Faturamento</button>
+          <button class="chip" id="pm-m-kg"  onclick="setPmMetrica('kg')">KG</button>
+          <button class="chip" id="pm-m-pac" onclick="setPmMetrica('pac')">Pacotes</button>
+          <span style="width:1px;height:22px;background:var(--border);margin:2px 4px;"></span>
+          <span style="font-size:12px;color:var(--muted);">Meses:</span>
+          <select class="chip chip-sel" id="pm-n" onchange="render()">
+            <option value="6">Últimos 6</option>
+            <option value="12" selected>Últimos 12</option>
+            <option value="24">Últimos 24</option>
+          </select>
+          <span style="font-size:12px;color:var(--muted);margin-left:6px;">Setor:</span>
+          <select class="chip chip-sel" id="pm-setor" onchange="render()">
+            <option value="">Todos</option>
+            <option value="conf">Confeitaria</option>
+            <option value="quadra">Quadra (Panificação)</option>
+          </select>
+          <input type="text" id="pm-busca" class="chip chip-sel" placeholder="Buscar produto…" oninput="render()" style="min-width:190px;color:var(--text);">
+          <button class="chip" onclick="exportarProdMes()" style="margin-left:auto;">⤓ CSV</button>
+        </div>
+        <div class="grid cols-4" id="pm-kpis"></div>
+        <div class="card" style="margin-top:14px;padding:0;overflow:hidden;">
+          <div style="overflow:auto;max-height:calc(100vh - 300px);"><table id="pm-tab" style="width:100%;border-collapse:collapse;font-size:12.5px;"></table></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6;">
+          KG = pacotes vendidos × peso cadastrado em <strong>Configurações › Pesos</strong>. Produto sem peso aparece com KG zero.
+          A variação compara o último mês com o anterior. Clique no cabeçalho do mês para ordenar por ele.
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-comercial">
       <div class="content">
         <div id="cm-rel-barra" style="display:none;justify-content:flex-end;margin-bottom:12px;">
@@ -1597,6 +1634,7 @@ function render(){
     document.getElementById('em-table').innerHTML=tabelaReg(regP,'emb');
   }
 
+  if(pagina==='prodmes') renderProdMes();
   if(pagina==='config'){ pintarMetasLista(); renderPesos(); }
   if(pagina==='comercial'){
     const rr=range();
@@ -1674,7 +1712,180 @@ function render(){
 }
 
 // NAV
-const TITLES={overview:['Visão Geral','Consolidado'],comodato:['Manutenção Comodato','Equipamentos'],predial:['Manutenção Predial','Chamados'],panificacao:['Panificação','Produção · quadra'],confeitaria:['Confeitaria','Produção'],embalacao:['Embalação','Produção · embalagem'],config:['Configurações','Ajustes do painel'],comercial:['Comercial','Faturamento (ERP)']};
+const TITLES={overview:['Visão Geral','Consolidado'],comodato:['Manutenção Comodato','Equipamentos'],predial:['Manutenção Predial','Chamados'],panificacao:['Panificação','Produção · quadra'],confeitaria:['Confeitaria','Produção'],embalacao:['Embalação','Produção · embalagem'],config:['Configurações','Ajustes do painel'],comercial:['Comercial','Faturamento (ERP)'],prodmes:['Produtos mês a mês','Faturamento e KG por produto, comparando meses']};
+/* ===== PRODUTOS MÊS A MÊS =====
+   Usa o que já existe em comercialMensal: produtos (R$) e produtosQtd (pacotes).
+   KG = pacotes x peso cadastrado. Nada novo no robô.                        */
+let pmMetrica='fat', pmOrdCol='total', pmOrdDir=-1;
+window.setPmMetrica=function(m){ pmMetrica=m; render(); };
+window.pmOrd=function(col){
+  if(pmOrdCol===col) pmOrdDir=-pmOrdDir; else { pmOrdCol=col; pmOrdDir=(col==='nome'?1:-1); }
+  render();
+};
+function pmMeses(n){
+  var hoje=new Date(), out=[];
+  for(var k=n-1;k>=0;k--){
+    var d=new Date(hoje.getFullYear(), hoje.getMonth()-k, 1);
+    out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  }
+  return out;
+}
+function pmRotulo(ym){
+  var M=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  var p=ym.split('-');
+  return M[(+p[1])-1]+'/'+p[0].slice(2);
+}
+function pmPeso(nome){
+  var C=(window.PESOS_LIVE && Object.keys(window.PESOS_LIVE).length)?window.PESOS_LIVE:((typeof PESO_PACOTE!=='undefined')?PESO_PACOTE:{});
+  var v=C[normP(nome)];
+  return (v==null)?null:v;
+}
+// matriz produto x mês, nas três medidas
+function pmDados(){
+  var n=parseInt((document.getElementById('pm-n')||{}).value||'12',10);
+  var S=(document.getElementById('pm-setor')||{}).value||'';
+  var meses=pmMeses(n);
+  var linhas={};
+  meses.forEach(function(ym){
+    var d=comercialMensal.find(function(x){ return x.periodo===ym; });
+    if(!d) return;
+    var src=S ? ((d.setores&&d.setores[S])?d.setores[S]:null) : d;
+    if(!src) return;
+    var mP=src.produtos||{}, mQ=src.produtosQtd||{};
+    var nomes={};
+    Object.keys(mP).forEach(function(k){ nomes[k]=1; });
+    Object.keys(mQ).forEach(function(k){ nomes[k]=1; });
+    Object.keys(nomes).forEach(function(nm){
+      var L=linhas[nm]||(linhas[nm]={ nome:nm, peso:pmPeso(nm), m:{} });
+      var pac=mQ[nm]||0, fat=mP[nm]||0;
+      L.m[ym]={ fat:fat, pac:pac, kg:(L.peso!=null?pac*L.peso:0) };
+    });
+  });
+  var arr=Object.keys(linhas).map(function(nm){
+    var L=linhas[nm];
+    var tot={fat:0,pac:0,kg:0};
+    meses.forEach(function(ym){ var v=L.m[ym]; if(v){ tot.fat+=v.fat; tot.pac+=v.pac; tot.kg+=v.kg; } });
+    L.total=tot;
+    // variação: último mês com dado vs o anterior
+    var ult=null, pen=null;
+    for(var i=meses.length-1;i>=0;i--){ var v=L.m[meses[i]]; if(v&&(v.fat>0||v.pac>0)){ if(ult===null) ult=meses[i]; else { pen=meses[i]; break; } } }
+    L.ult=ult; L.pen=pen;
+    return L;
+  }).filter(function(L){ return L.total.fat>0 || L.total.pac>0; });
+  return { meses:meses, arr:arr, setor:S };
+}
+function pmValor(L, ym){
+  var v=L.m[ym]; if(!v) return null;
+  return pmMetrica==='kg'?v.kg:(pmMetrica==='pac'?v.pac:v.fat);
+}
+function pmTotal(L){ return pmMetrica==='kg'?L.total.kg:(pmMetrica==='pac'?L.total.pac:L.total.fat); }
+function pmFmt(v){
+  if(v==null) return '<span style="color:var(--muted)">–</span>';
+  if(pmMetrica==='fat') return fmtMoney(v);
+  if(pmMetrica==='kg')  return (v>0? v.toLocaleString('pt-BR',{maximumFractionDigits:0})+' kg' : '<span style="color:var(--muted)">0</span>');
+  return v.toLocaleString('pt-BR',{maximumFractionDigits:0});
+}
+function renderProdMes(){
+  ['fat','kg','pac'].forEach(function(m){
+    var b=document.getElementById('pm-m-'+m);
+    if(b) b.className='chip'+(pmMetrica===m?' on':'');
+  });
+  var D=pmDados(), meses=D.meses, arr=D.arr;
+
+  // KPIs
+  var ultimo=meses[meses.length-1], anterior=meses[meses.length-2];
+  var somaU=0, somaA=0;
+  arr.forEach(function(L){ somaU+=(pmValor(L,ultimo)||0); somaA+=(pmValor(L,anterior)||0); });
+  var semPeso=arr.filter(function(L){ return L.peso==null; }).length;
+  var vari=(somaA>0)?((somaU-somaA)/somaA*100):null;
+  document.getElementById('pm-kpis').innerHTML=
+    kpiCard('Produtos no período', arr.length.toLocaleString('pt-BR'), '📦','#8b5cf6')+
+    kpiCard(pmRotulo(ultimo), pmFmt(somaU).replace(/<[^>]+>/g,''), '📅','#1f9d6b')+
+    kpiCard('vs '+pmRotulo(anterior), (vari==null?'–':((vari>0?'▲ ':'▼ ')+Math.abs(vari).toFixed(1).replace('.',',')+'%')), '📈', (vari==null?'#8a91a3':(vari>=0?'#16b364':'#ef4444')))+
+    kpiCard('Sem peso cadastrado', semPeso.toLocaleString('pt-BR'), '⚖️', semPeso>0?'#f5b013':'#8a91a3');
+
+  // status
+  (function(){
+    var el=document.getElementById('pm-status'); if(!el) return;
+    if(!comCarregado){ el.textContent='⏳ Carregando dados do robô…'; return; }
+    var comDados=meses.filter(function(ym){ return comercialMensal.some(function(x){ return x.periodo===ym; }); }).length;
+    var t=[comDados+' de '+meses.length+' meses com dado'];
+    if(D.setor) t.push('corte: '+(D.setor==='conf'?'Confeitaria':'Quadra'));
+    if(semPeso>0) t.push(semPeso+' produto(s) sem peso — KG zerado neles');
+    el.textContent=t.join(' · ');
+  })();
+
+  // ordenação
+  var q=String((document.getElementById('pm-busca')||{}).value||'').trim().toUpperCase();
+  var lista=arr.filter(function(L){ return !q || L.nome.toUpperCase().indexOf(q)>=0; });
+  lista.sort(function(a,b){
+    if(pmOrdCol==='nome') return a.nome.localeCompare(b.nome,'pt-BR')*pmOrdDir;
+    if(pmOrdCol==='total') return (pmTotal(b)-pmTotal(a))*(pmOrdDir<0?1:-1);
+    var va=pmValor(a,pmOrdCol)||0, vb=pmValor(b,pmOrdCol)||0;
+    return (vb-va)*(pmOrdDir<0?1:-1);
+  });
+
+  // cabeçalho
+  function th(rot,col,dir){
+    var on=(pmOrdCol===col);
+    return '<th onclick="pmOrd(\''+col+'\')" style="cursor:pointer;position:sticky;top:0;background:var(--bg-2);padding:9px 10px;text-align:'+(dir||'right')+';white-space:nowrap;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:'+(on?'var(--primary)':'var(--muted)')+';border-bottom:1px solid var(--border);">'+rot+(on?(pmOrdDir<0?' ▼':' ▲'):'')+'</th>';
+  }
+  var html='<thead><tr>'+
+    '<th onclick="pmOrd(\'nome\')" style="cursor:pointer;position:sticky;left:0;top:0;z-index:3;background:var(--bg-2);padding:9px 12px;text-align:left;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:'+(pmOrdCol==='nome'?'var(--primary)':'var(--muted)')+';border-bottom:1px solid var(--border);">Produto</th>'+
+    meses.map(function(ym){ return th(pmRotulo(ym),ym); }).join('')+
+    th('Total','total')+
+    '<th style="position:sticky;top:0;background:var(--bg-2);padding:9px 10px;text-align:right;font-size:10.5px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);">Var.</th>'+
+    '</tr></thead><tbody>';
+
+  if(!lista.length){
+    html+='<tr><td colspan="'+(meses.length+3)+'" style="padding:30px;text-align:center;color:var(--muted);">'+
+      (comercialMensal.length?'Nenhum produto encontrado.':'Aguardando o robô gravar os dados.')+'</td></tr>';
+  }
+  lista.forEach(function(L){
+    var vU=(L.ult?pmValor(L,L.ult):null), vP=(L.pen?pmValor(L,L.pen):null);
+    var dv=(vP&&vP>0&&vU!=null)?((vU-vP)/vP*100):null;
+    html+='<tr>'+
+      '<td style="position:sticky;left:0;background:var(--bg);padding:8px 12px;border-bottom:1px solid var(--border);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+
+        esc(L.nome)+(L.peso==null?' <span style="font-size:9.5px;color:var(--amber);">sem peso</span>':'')+'</td>'+
+      meses.map(function(ym){
+        var v=pmValor(L,ym);
+        return '<td style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;'+(v==null||v===0?'color:var(--muted);':'')+'">'+pmFmt(v)+'</td>';
+      }).join('')+
+      '<td style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--border);font-weight:700;font-variant-numeric:tabular-nums;">'+pmFmt(pmTotal(L))+'</td>'+
+      '<td style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--border);font-size:11.5px;font-weight:600;color:'+(dv==null?'var(--muted)':(dv>=0?'#16b364':'#ef4444'))+';">'+
+        (dv==null?'–':((dv>0?'+':'')+dv.toFixed(0)+'%'))+'</td>'+
+      '</tr>';
+  });
+  // rodapé com o total de cada mês
+  var tf='<tfoot><tr><td style="position:sticky;left:0;background:var(--bg-2);padding:9px 12px;font-weight:700;border-top:2px solid var(--border);">Total</td>';
+  meses.forEach(function(ym){
+    var s=0; lista.forEach(function(L){ s+=(pmValor(L,ym)||0); });
+    tf+='<td style="padding:9px 10px;text-align:right;font-weight:700;background:var(--bg-2);border-top:2px solid var(--border);font-variant-numeric:tabular-nums;">'+pmFmt(s)+'</td>';
+  });
+  var sT=0; lista.forEach(function(L){ sT+=pmTotal(L); });
+  tf+='<td style="padding:9px 10px;text-align:right;font-weight:700;background:var(--bg-2);border-top:2px solid var(--border);">'+pmFmt(sT)+'</td><td style="background:var(--bg-2);border-top:2px solid var(--border);"></td></tr></tfoot>';
+  document.getElementById('pm-tab').innerHTML=html+'</tbody>'+tf;
+}
+window.exportarProdMes=function(){
+  var D=pmDados(), meses=D.meses;
+  var q=String((document.getElementById('pm-busca')||{}).value||'').trim().toUpperCase();
+  var lista=D.arr.filter(function(L){ return !q || L.nome.toUpperCase().indexOf(q)>=0; });
+  lista.sort(function(a,b){ return pmTotal(b)-pmTotal(a); });
+  var nBR=function(v){ return (v==null?'':String(v).replace('.',',')); };
+  var linhas=[['Produto','Medida'].concat(meses.map(pmRotulo)).concat(['Total']).join(';')];
+  var medida=(pmMetrica==='fat'?'Faturamento':(pmMetrica==='kg'?'KG':'Pacotes'));
+  lista.forEach(function(L){
+    linhas.push([L.nome, medida].concat(meses.map(function(ym){
+      var v=pmValor(L,ym); return nBR(v==null?'':Math.round(v*100)/100);
+    })).concat([nBR(Math.round(pmTotal(L)*100)/100)]).join(';'));
+  });
+  var blob=new Blob(['\ufeff'+linhas.join('\n')],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='produtos-mes-a-mes-'+medida.toLowerCase()+'-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+};
+
 window.nav=function(p){
   pagina=p;
   try{ localStorage.setItem('mc_last_page',p); }catch(e){}
