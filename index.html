@@ -1141,12 +1141,22 @@ function docsDoCliente(chave){
     var vend={}; if(c.vend) vend[c.vend]=c.fat||0;
     var repm={}; if(c.rep) repm[c.rep]=c.fat||0;
     var cli={}; cli[c.nome||chave]=c.fat||0;
+    // prod vem como { produto: [valor, qtd] }. A quantidade alimenta as colunas
+    // Pacotes e KG (KG = pacotes x peso cadastrado). Formato antigo, só número,
+    // continua funcionando — nesse caso a quantidade fica ausente.
+    var pv={}, pq={};
+    var pr=c.prod||{};
+    Object.keys(pr).forEach(function(n){
+      var a=pr[n];
+      if(Array.isArray(a)){ pv[n]=a[0]||0; if(a.length>1) pq[n]=a[1]||0; }
+      else pv[n]=a||0;
+    });
     out.push({
       periodo:d.periodo,
       faturamento:c.fat||0, notas:c.notas||0, registros:c.notas||0,
-      clientes:cli, produtos:c.prod||{}, regioes:reg,
+      clientes:cli, produtos:pv, produtosQtd:pq, regioes:reg,
       vendedores:vend, representantes:repm,
-      tiposProduto:{}, tiposProdutoKg:{}, produtosQtd:{}, porDiaSemana:{},
+      tiposProduto:{}, tiposProdutoKg:{}, porDiaSemana:{},
       _cliente:true
     });
   });
