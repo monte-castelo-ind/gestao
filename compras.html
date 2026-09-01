@@ -104,19 +104,22 @@ h1{font-size:21px;font-weight:700;letter-spacing:-.4px}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
 .fgrid label,.fld label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:600}
 .fhint{font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.4}
-.req{border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--card);box-shadow:var(--shadow);margin-bottom:11px}
+/* grade: várias requisições visíveis ao mesmo tempo */
+.reqgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:11px;align-items:start}
+.req{border:1px solid var(--border);border-radius:12px;padding:13px 14px;background:var(--card);box-shadow:var(--shadow)}
+.req-tit{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .req.aguardando{border-left:3px solid var(--amber)}
 .req.aprovada{border-left:3px solid var(--green)}
 .req.reprovada{border-left:3px solid var(--red)}
 .req.liberada{border-left:3px solid var(--blue)}
-.req-h{display:flex;justify-content:space-between;gap:11px;align-items:flex-start;flex-wrap:wrap}
+.req-h{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .req-cod{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
 .req-tit{font-size:14.5px;font-weight:600;margin-top:2px}
 .req-meta{font-size:11.5px;color:var(--muted);margin-top:3px}
-.req-val{font-size:19px;font-weight:700;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.req-val{font-size:17px;font-weight:700;font-family:'JetBrains Mono',monospace;white-space:nowrap}
 .req-itens{margin-top:11px;border-top:1px dashed var(--border);padding-top:9px}
 .req-item{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:3px 0}
-.req-acoes{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.req-acoes{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
 .linha-item{display:grid;grid-template-columns:1fr 80px 76px 110px 34px;gap:7px;align-items:end;margin-bottom:8px}
 .mask{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:150;display:flex;align-items:center;justify-content:center;padding:18px}
 .modal{background:var(--card);border:1px solid var(--border);border-radius:15px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow)}
@@ -137,6 +140,7 @@ h1{font-size:21px;font-weight:700;letter-spacing:-.4px}
   .navbtn{white-space:nowrap;width:auto;padding:8px 12px}
   main{padding:16px 14px 50px}
   .linha-item{grid-template-columns:1fr 1fr;gap:7px}
+  .reqgrid{grid-template-columns:1fr}
   .req-val{font-size:17px}
 }
 </style>
@@ -243,13 +247,15 @@ h1{font-size:21px;font-weight:700;letter-spacing:-.4px}
       <div class="alert a-info">⚙ Quem pode criar requisição é controlado pela flag <span class="mono">compras</span> no cadastro de usuários. A aprovação é sempre do administrador.</div>
       <div class="card" style="max-width:560px">
         <div class="klabel">Limite de aprovação</div>
+        <div id="cf-setores-planner" class="fhint" style="margin-top:6px"></div>
         <div class="fgrid" style="margin-top:11px">
           <div><label>Valor a partir do qual precisa de aprovação · R$</label>
             <input type="number" id="cf-limite" step="0.01" min="0" />
             <div class="fhint">Requisição de valor menor é registrada como <strong>liberada</strong> e segue direto para compra, sem passar por você.</div></div>
         </div>
-        <div class="fld" style="margin-top:13px"><label>Setores disponíveis (um por linha)</label>
-          <textarea id="cf-setores" rows="8" placeholder="PANIFICAÇÃO&#10;CONFEITARIA&#10;MANUTENÇÃO"></textarea></div>
+        <div class="fld" style="margin-top:13px"><label>Setores extras (um por linha)</label>
+          <textarea id="cf-setores" rows="6" placeholder="só o que não existir no Planner"></textarea>
+          <div class="fhint">A lista principal vem do Planner. Use isto apenas para setores que existam só em compras.</div></div>
         <div style="margin-top:13px"><button class="btn btn-sm" onclick="salvarConfig()">Salvar</button></div>
       </div>
     </div>
@@ -272,6 +278,16 @@ const auth = getAuth(appFB);
 /* ---------- estado ---------- */
 var pagina='minhas', sessaoEmail='', sessaoUid='', sessaoNome='', currentRole=null, ehAdmin=false;
 var reqs=[], cfg={ limite:1000, setores:[] };
+var setoresPlanner=[];   // planner/_config.setores — fonte única dos setores
+function listaSetores(){
+  // o que o Planner tem manda; a lista local do app só complementa
+  var out=[], vis={};
+  setoresPlanner.concat(cfg.setores||[]).forEach(function(s){
+    var k=norm(s);
+    if(k && !vis[k]){ vis[k]=1; out.push(String(s).trim()); }
+  });
+  return out;
+}
 var subs={}, ultimaCarga=null;
 const TITLES={
   minhas:['Minhas requisições','O que você pediu e em que pé está'],
@@ -374,14 +390,17 @@ function cartao(r, opts){
     '</div></div>';
 
   if(itens.length){
-    h+='<div class="req-itens">'+itens.map(function(i){
-      return '<div class="req-item"><span>'+esc(i.descricao||'—')+
-        ' <span style="color:var(--muted)">'+fmtN(num(i.qtd),2)+' '+esc(i.unidade||'un')+' × '+fmtR$(num(i.precoUn),2)+'</span></span>'+
+    var mostra=itens.slice(0,3);
+    h+='<div class="req-itens">'+mostra.map(function(i){
+      return '<div class="req-item"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(i.descricao||'—')+
+        ' <span style="color:var(--muted)">'+fmtN(num(i.qtd),2)+' '+esc(i.unidade||'un')+'</span></span>'+
         '<span class="num">'+fmtR$(num(i.qtd)*num(i.precoUn),2)+'</span></div>';
-    }).join('')+'</div>';
+    }).join('')+
+    (itens.length>3?'<div class="req-item" style="color:var(--muted)">+ '+(itens.length-3)+' item(ns)</div>':'')+
+    '</div>';
   }
-  if(r.justificativa) h+='<div class="req-meta" style="margin-top:9px"><strong>Para quê:</strong> '+esc(r.justificativa)+'</div>';
-  if(r.fornecedor)    h+='<div class="req-meta"><strong>Fornecedor sugerido:</strong> '+esc(r.fornecedor)+'</div>';
+  if(r.justificativa) h+='<div class="req-meta" style="margin-top:9px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden"><strong>Para quê:</strong> '+esc(r.justificativa)+'</div>';
+  if(r.fornecedor)    h+='<div class="req-meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><strong>Fornecedor:</strong> '+esc(r.fornecedor)+'</div>';
 
   if(r.status==='aprovada'||r.status==='reprovada'){
     h+='<div class="hist" style="margin-top:10px">'+
@@ -400,6 +419,7 @@ function cartao(r, opts){
     acoes.push('<button class="btn btn-sm btn-no" onclick="decidir(\''+esc(r.id)+'\',\'reprovada\')">✕ Reprovar</button>');
   }
   if(podeCancelar) acoes.push('<button class="btn btn-sm btn-ghost" onclick="cancelar(\''+esc(r.id)+'\')">Cancelar</button>');
+  if(r.status==='aprovada'||r.status==='liberada') acoes.push('<button class="btn btn-sm btn-ghost" onclick="autorizacao(\''+esc(r.id)+'\')">\u2399 Autorização</button>');
   if(r.status==='aguardando'||r.status==='liberada') acoes.push('<button class="btn btn-sm btn-ghost" onclick="duplicar(\''+esc(r.id)+'\')">Duplicar</button>');
   if(acoes.length) h+='<div class="req-acoes">'+acoes.join('')+'</div>';
   return h+'</div>';
@@ -419,7 +439,7 @@ function renderMinhas(){
     '<div class="card"><div class="klabel">Limite de aprovação</div><div class="kval">'+fmtR$k(num(cfg.limite))+'</div><div class="khint">abaixo disso segue direto</div></div>'
   ].join('');
   document.getElementById('lista-minhas').innerHTML = m.length
-    ? m.map(function(r){ return cartao(r,{}); }).join('')
+    ? '<div class="reqgrid">'+m.map(function(r){ return cartao(r,{}); }).join('')+'</div>'
     : '<div class="card empty">Você ainda não fez nenhuma requisição. Use <strong>+ Nova requisição</strong> no topo.</div>';
   document.getElementById('psub').textContent=m.length+' requisição(ões) sua(s)';
 }
@@ -443,10 +463,10 @@ function renderAprovar(){
     '<div class="card"><div class="klabel">Aprovado em 30 dias</div><div class="kval">'+fmtR$k(valApr)+'</div><div class="khint">'+dec.length+' decisão(ões)</div></div>'
   ].join('');
   document.getElementById('lista-aprovar').innerHTML = ag.length
-    ? ag.map(function(r){ return cartao(r,{aprovar:true}); }).join('')
+    ? '<div class="reqgrid">'+ag.map(function(r){ return cartao(r,{aprovar:true}); }).join('')+'</div>'
     : '<div class="card empty">Nada esperando aprovação. ✓</div>';
   document.getElementById('lista-decididas').innerHTML = dec.length
-    ? dec.slice(0,25).map(function(r){ return cartao(r,{}); }).join('')
+    ? '<div class="reqgrid">'+dec.slice(0,25).map(function(r){ return cartao(r,{}); }).join('')+'</div>'
     : '<div class="card empty">Nenhuma decisão nos últimos 30 dias.</div>';
   document.getElementById('psub').textContent=ag.length?(ag.length+' esperando · '+fmtR$k(val)):'nada pendente';
 }
@@ -485,13 +505,17 @@ function renderTodas(){
     '<div class="card"><div class="klabel">Reprovado</div><div class="kval" style="color:'+(soma(function(r){return r.status==='reprovada';})>0?'var(--red)':'')+'">'+fmtR$k(soma(function(r){return r.status==='reprovada';}))+'</div><div class="khint">economia registrada</div></div>'
   ].join('');
   document.getElementById('lista-todas').innerHTML = lista.length
-    ? lista.slice(0,120).map(function(r){ return cartao(r,{aprovar:ehAdmin}); }).join('')
+    ? '<div class="reqgrid">'+lista.slice(0,120).map(function(r){ return cartao(r,{aprovar:ehAdmin}); }).join('')+'</div>'
     : '<div class="card empty">Nenhuma requisição com esses filtros.</div>';
 }
 
 function renderConfig(){
   document.getElementById('cf-limite').value=num(cfg.limite)||1000;
   document.getElementById('cf-setores').value=(cfg.setores||[]).join('\n');
+  var el=document.getElementById('cf-setores-planner');
+  if(el) el.innerHTML = setoresPlanner.length
+    ? '\u2713 '+setoresPlanner.length+' setor(es) lidos do Planner: '+esc(setoresPlanner.slice(0,6).join(' · '))+(setoresPlanner.length>6?' …':'')
+    : '\u26a0 Não consegui ler os setores do Planner (planner/_config). Use a lista extra abaixo.';
 }
 window.salvarConfig=function(){
   if(!ehAdmin){ alert('Só o administrador altera a configuração.'); return; }
@@ -550,7 +574,7 @@ window.abrirNova=function(base){
   _itens = base && base.itens && base.itens.length
     ? base.itens.map(function(i){ return { descricao:i.descricao, qtd:i.qtd, unidade:i.unidade, precoUn:i.precoUn }; })
     : [{descricao:'',qtd:'',unidade:'un',precoUn:''}];
-  var setores=(cfg.setores||[]);
+  var setores=listaSetores();
   modal({
     titulo: base?'Duplicar requisição':'Nova requisição',
     sub:'Valor a partir de '+fmtR$k(num(cfg.limite))+' precisa de aprovação',
@@ -559,8 +583,9 @@ window.abrirNova=function(base){
         '<div><label>Título / resumo</label><input type="text" id="nv-titulo" value="'+esc(base?base.titulo:'')+'" placeholder="Ex: peças para o compressor" /></div>'+
         '<div><label>Setor</label>'+
           (setores.length
-            ? '<select id="nv-setor">'+setores.map(function(s){ return '<option value="'+esc(s)+'"'+((base&&base.setor===s)?' selected':'')+'>'+esc(s)+'</option>'; }).join('')+'</select>'
-            : '<input type="text" id="nv-setor" value="'+esc(base?base.setor:'')+'" placeholder="Ex: MANUTENÇÃO" />')+
+            ? '<select id="nv-setor"><option value="">— escolher —</option>'+
+              setores.map(function(s){ return '<option value="'+esc(s)+'"'+((base&&base.setor===s)?' selected':'')+'>'+esc(s)+'</option>'; }).join('')+'</select>'
+            : '<input id="nv-setor" type="text" value="'+esc(base?base.setor:'')+'" placeholder="Ex: MANUTENÇÃO" />')+
         '</div>'+
       '</div>'+
       '<div style="margin-top:14px"><div class="klabel">Itens</div><div id="itens-host" style="margin-top:8px"></div>'+
@@ -568,10 +593,18 @@ window.abrirNova=function(base){
       '<div id="itens-total"></div></div>'+
       '<div class="fld" style="margin-top:14px"><label>Para quê / justificativa</label>'+
         '<textarea id="nv-just" placeholder="Onde vai ser usado, por que precisa agora">'+esc(base?base.justificativa:'')+'</textarea></div>'+
-      '<div class="fgrid" style="margin-top:12px">'+
-        '<div><label>Fornecedor sugerido</label><input type="text" id="nv-forn" value="'+esc(base?base.fornecedor:'')+'" placeholder="opcional" /></div>'+
-        '<div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text);cursor:pointer;font-weight:500">'+
-          '<input type="checkbox" id="nv-urg" style="width:16px;height:16px;accent-color:var(--red)"> Urgente</label></div>'+
+      '<div class="klabel" style="margin-top:16px">Dados do fornecedor</div>'+
+      '<div class="fhint" style="margin-bottom:8px">Usados na Autorização de Compra. Podem ficar em branco agora e ser preenchidos depois.</div>'+
+      '<div class="fgrid">'+
+        '<div><label>Razão social</label><input type="text" id="nv-forn" value="'+esc(base?base.fornecedor:'')+'" placeholder="Ex: BRASIL PARAFUSOS" /></div>'+
+        '<div><label>CNPJ</label><input type="text" id="nv-cnpj" value="'+esc(base?base.cnpj:'')+'" placeholder="00.000.000/0000-00" /></div>'+
+        '<div><label>Endereço</label><input type="text" id="nv-end" value="'+esc(base?base.endereco:'')+'" placeholder="Rua, nº, bairro" /></div>'+
+        '<div><label>Município / UF</label><input type="text" id="nv-munuf" value="'+esc(base?base.munUf:'')+'" placeholder="PORTO ALEGRE/RS" /></div>'+
+        '<div><label>Forma de pagamento</label><input type="text" id="nv-pgto" value="'+esc(base?base.formaPagamento:'')+'" placeholder="Ex: FATURADO 28 DIAS" /></div>'+
+        '<div><label>Data de entrega</label><input type="text" id="nv-entrega" value="'+esc(base?base.dataEntrega:'')+'" placeholder="Ex: 05/09/2026 ou ENTREGUE" /></div>'+
+        '<div><label>Comprador</label><input type="text" id="nv-comprador" value="'+esc(base?base.comprador:'')+'" placeholder="Quem vai comprar" /></div>'+
+        '<div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text);cursor:pointer;font-weight:500;padding:9px 0">'+
+          '<input type="checkbox" id="nv-urg"'+((base&&base.urgente)?' checked':'')+' style="width:16px;height:16px;accent-color:var(--red)"> Urgente</label></div>'+
       '</div>',
     ok:'Enviar requisição',
     onOk:function(){
@@ -592,6 +625,12 @@ window.abrirNova=function(base){
         codigo:codigoNovo(), titulo:titulo, setor:setor, itens:itens,
         valorTotal:Math.round(total*100)/100, justificativa:(document.getElementById('nv-just').value||'').trim(),
         fornecedor:(document.getElementById('nv-forn').value||'').trim(),
+        cnpj:(document.getElementById('nv-cnpj').value||'').trim(),
+        endereco:(document.getElementById('nv-end').value||'').trim(),
+        munUf:(document.getElementById('nv-munuf').value||'').trim(),
+        formaPagamento:(document.getElementById('nv-pgto').value||'').trim(),
+        dataEntrega:(document.getElementById('nv-entrega').value||'').trim(),
+        comprador:(document.getElementById('nv-comprador').value||'').trim(),
         urgente:!!document.getElementById('nv-urg').checked,
         status:status, limiteNaEpoca:num(cfg.limite),
         criadoEm:agora(), criadoPor:sessaoEmail, criadoUid:sessaoUid, criadoNome:sessaoNome
@@ -650,6 +689,106 @@ window.cancelar=function(id){
     status:'cancelada', observacao:(motivo||'').trim(),
     decididoPor:sessaoEmail, decididoEm:agora()
   }).catch(function(e){ console.error('cancelar:',e); alert('Erro: '+(e.code||e.message)); });
+};
+
+/* ---- AUTORIZAÇÃO DE COMPRA (documento para imprimir / PDF) ---- */
+window.autorizacao=function(id){
+  var r=null; reqs.forEach(function(x){ if(x.id===id) r=x; });
+  if(!r) return;
+  var itens=(r.itens||[]);
+  var tot=num(r.valorTotal)||totalDe(r);
+  var LINHAS=11;   // mesmo número de linhas do formulário em papel
+  var logo=getComputedStyle(document.documentElement).getPropertyValue('--logo-light').trim();
+  function celula(i){
+    var it=itens[i];
+    if(!it) return '<tr><td class="c">'+(i+1)+'</td><td></td><td></td><td class="m">R$</td><td class="m">-</td></tr>';
+    var t=num(it.qtd)*num(it.precoUn);
+    return '<tr><td class="c">'+(i+1)+'</td>'+
+      '<td class="c">'+fmtN(num(it.qtd),2)+'</td>'+
+      '<td>'+esc(String(it.descricao||'').toUpperCase())+'</td>'+
+      '<td class="m">R$ '+fmtN(num(it.precoUn),2)+'</td>'+
+      '<td class="m">R$ '+fmtN(t,2)+'</td></tr>';
+  }
+  var linhas=''; for(var i=0;i<Math.max(LINHAS,itens.length);i++) linhas+=celula(i);
+
+  var doc_='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">'+
+    '<title>Autorização de Compra · '+esc(r.codigo||'')+'</title>'+
+    '<style>'+
+    '@page{size:A4;margin:14mm}'+
+    'body{font-family:Arial,Helvetica,sans-serif;font-size:10.5px;color:#000;background:#fff;margin:0}'+
+    '.folha{border:1px solid #000;padding:14px 16px}'+
+    '.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}'+
+    '.logo{width:120px;height:44px;background:'+logo+' no-repeat left center;background-size:contain}'+
+    '.emp{text-align:right;line-height:1.5}'+
+    '.emp b{font-size:11.5px}'+
+    '.tit{text-align:center;font-size:13px;font-weight:700;letter-spacing:.5px;margin:6px 0 2px}'+
+    '.cab{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin:10px 0 14px}'+
+    '.campo{font-size:10px}'+
+    '.campo .rot{color:#333}'+
+    '.campo .val{border-bottom:1px solid #000;min-width:120px;display:inline-block;padding:0 6px 1px;font-weight:600;color:#1f3864}'+
+    '.faixa{background:#d9d9d9;font-weight:700;font-size:10px;padding:3px 6px;margin:10px 0 8px;letter-spacing:.3px}'+
+    '.forn{display:grid;grid-template-columns:1fr 1fr;gap:3px 22px;font-size:10px;margin-bottom:4px}'+
+    '.forn div{display:flex;gap:6px}'+
+    '.forn .rot{color:#333;min-width:104px}'+
+    '.forn .val{font-weight:600;color:#1f3864}'+
+    'table{width:100%;border-collapse:collapse;margin-top:6px}'+
+    'th{background:#d9d9d9;border:1px solid #000;font-size:9.5px;padding:3px 4px;text-transform:uppercase}'+
+    'td{border:1px solid #000;padding:3px 5px;font-size:10px;height:15px;color:#1f3864}'+
+    'td.c{text-align:center}td.m{text-align:right;white-space:nowrap}'+
+    'tr:nth-child(even) td{background:#f2f2f2}'+
+    '.tot{margin-top:8px;display:flex;justify-content:flex-end;gap:10px;align-items:center}'+
+    '.tot .cx{background:#d9d9d9;border:1px solid #000;padding:4px 10px;font-weight:700;font-size:11px}'+
+    '.obs{margin-top:14px;font-size:10px}'+
+    '.obs .rot{font-weight:700}'+
+    '.obs .txt{border:1px solid #000;min-height:52px;padding:5px 7px;margin-top:4px;color:#1f3864}'+
+    '.ass{margin-top:34px;text-align:center;font-size:10px}'+
+    '.ass .linha{border-top:1px solid #000;width:230px;margin:0 auto 3px}'+
+    '.ass b{font-size:10.5px}'+
+    '.reg{margin-top:9px;font-size:8.5px;color:#555;text-align:center;line-height:1.5}'+
+    '.acoes{max-width:800px;margin:12px auto;text-align:center}'+
+    '.acoes button{font:inherit;font-size:13px;padding:9px 18px;margin:0 4px;border:1px solid #888;border-radius:7px;background:#fff;cursor:pointer}'+
+    '@media print{.acoes{display:none}.folha{border:none;padding:0}}'+
+    '</style></head><body>'+
+    '<div class="acoes"><button onclick="window.print()">Imprimir / salvar em PDF</button>'+
+    '<button onclick="window.close()">Fechar</button></div>'+
+    '<div class="folha">'+
+      '<div class="top"><div class="logo"></div>'+
+        '<div class="emp"><b>PANIFICADORA MONTE CASTELO LTDA</b><br>AV RODRIGUES DA FONSECA 1840<br>VILA NOVA · PORTO ALEGRE</div></div>'+
+      '<div class="tit">AUTORIZAÇÃO DE COMPRA</div>'+
+      '<div class="cab">'+
+        '<div class="campo"><span class="rot">Data do Pedido:</span> <span class="val">'+dataBR(r.decididoEm||r.criadoEm)+'</span></div>'+
+        '<div class="campo"><span class="rot">Requisição:</span> <span class="val">'+esc(r.codigo||'')+'</span></div>'+
+        '<div class="campo"><span class="rot">Comprador:</span> <span class="val">'+esc((r.comprador||'').toUpperCase())+'</span></div>'+
+      '</div>'+
+      '<div class="faixa">DADOS DO FORNECEDOR</div>'+
+      '<div class="forn">'+
+        '<div><span class="rot">Razão Social:</span><span class="val">'+esc((r.fornecedor||'').toUpperCase())+'</span></div>'+
+        '<div><span class="rot">CNPJ:</span><span class="val">'+esc(r.cnpj||'')+'</span></div>'+
+        '<div><span class="rot">Endereço:</span><span class="val">'+esc((r.endereco||'').toUpperCase())+'</span></div>'+
+        '<div><span class="rot">Mun. / UF:</span><span class="val">'+esc((r.munUf||'').toUpperCase())+'</span></div>'+
+        '<div><span class="rot">Forma Pagamento:</span><span class="val">'+esc((r.formaPagamento||'').toUpperCase())+'</span></div>'+
+        '<div><span class="rot">Data Entrega:</span><span class="val">'+esc((r.dataEntrega||'').toUpperCase())+'</span></div>'+
+      '</div>'+
+      '<table><thead><tr><th style="width:44px">Item</th><th style="width:58px">Qtde</th>'+
+        '<th>Descrição do Produto</th><th style="width:96px">Unit (R$)</th><th style="width:104px">Total (R$)</th></tr></thead>'+
+        '<tbody>'+linhas+'</tbody></table>'+
+      '<div class="tot"><span class="cx">VALOR TOTAL:</span><span class="cx">R$ '+fmtN(tot,2)+'</span></div>'+
+      '<div class="obs"><div class="rot">OBSERVAÇÃO:</div><div class="txt">'+
+        esc((r.justificativa||'').toUpperCase())+
+        (r.observacao?'<br>'+esc(String(r.observacao).toUpperCase()):'')+'</div></div>'+
+      '<div class="ass"><div class="linha"></div><b>Diretor Geral</b></div>'+
+      '<div class="reg">'+
+        (r.status==='aprovada'
+          ? 'Aprovada no sistema por '+esc(r.decididoPor||'')+' em '+dataBR(r.decididoEm)+' às '+horaBR(r.decididoEm)+' · valor aprovado R$ '+fmtN(num(r.valorNaDecisao||r.valorTotal),2)
+          : 'Liberada automaticamente: valor abaixo do limite de '+fmtR$(num(r.limiteNaEpoca||cfg.limite),2)+' vigente na data')+
+        '<br>Requisitada por '+esc(r.criadoNome||r.criadoPor||'')+' em '+dataBR(r.criadoEm)+' · setor '+esc(r.setor||'')+
+      '</div>'+
+    '</div></body></html>';
+
+  var w=window.open('','_blank');
+  if(!w){ alert('O navegador bloqueou a janela. Libere os pop-ups para este site.'); return; }
+  w.document.write(doc_);
+  w.document.close();
 };
 
 window.exportarCSV=function(){
@@ -713,6 +852,12 @@ function liberar(d){
   ouvir('comprasRequisicoes', query(collection(dbC,'comprasRequisicoes'), orderBy('criadoEm','desc'), limit(800)), function(s){
     reqs=s.docs.map(function(x){ return Object.assign({ id:x.id }, x.data()); });
     ultimaCarga=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    render();
+  });
+  // setores do Planner (mesmo projeto Firebase, coleção planner/_config)
+  ouvir('plannerConfig', doc(dbC,'planner','_config'), function(s){
+    var d=s.exists()?(s.data()||{}):{};
+    setoresPlanner=Array.isArray(d.setores)?d.setores.slice():[];
     render();
   });
   ouvir('comprasConfig', doc(dbC,'comprasConfig','app'), function(s){
