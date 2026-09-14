@@ -250,6 +250,18 @@
           <option value="conf">Confeitaria</option>
           <option value="quadra">Quadra (Panificação)</option>
         </select>
+        <span style="font-size:12px;color:var(--muted);margin-left:8px;">Rotas:</span>
+        <span style="position:relative;display:inline-block;">
+          <button class="chip" id="btn-rotas-com" onclick="toggleRotasBox(event)">Todas as rotas ▾</button>
+          <div class="dd-panel" id="rotas-box" style="display:none;flex-direction:column;align-items:stretch;gap:6px;min-width:280px;max-width:340px;white-space:normal;">
+            <input id="rotas-busca" class="chip chip-sel" placeholder="buscar rota…" oninput="pintarListaRotas()" style="color:var(--text);width:100%;box-sizing:border-box;">
+            <div id="rotas-lista" style="max-height:280px;overflow:auto;"></div>
+            <div style="display:flex;gap:6px;border-top:1px solid var(--border);padding-top:7px;">
+              <button class="chip" onclick="limparRotas()" style="flex:1;">Limpar</button>
+              <button class="chip" onclick="fecharRotasBox()" style="flex:1;">Fechar</button>
+            </div>
+          </div>
+        </span>
         <span style="font-size:12px;color:var(--muted);margin-left:8px;">Cliente:</span>
         <select class="chip chip-sel" id="sel-cliente-com" onchange="setClienteCom(this.value)" style="min-width:210px;max-width:300px;">
           <option value="">Todos os clientes</option>
@@ -552,6 +564,8 @@ const dbProd = getFirestore(appProd);
 let periodo='mes', pagina='overview', filtroAno='', filtroMes='', filtroDe='', filtroAte='', filtroSemana='', filtroSetorCom='', filtroClienteCom='';
 let estoque=[], chamados=[], registros=[], prodCatalog={}, presencas=[], quadraRegistros=[], comercialMensal=[], comercialDiario=[], comercialMeta={}, comCarregado=false, _navRestaurado=false, pesosItens=[];
 let comercialClienteMes=[];   // um doc por mês com o detalhe de cada cliente
+let filtroRotasCom=[];        // multi-seleção de rotas (vazio = todas)
+var _rotasVis=[];             // rotas visíveis na lista, para o índice do checkbox
 let subE=null, subC=null, subR=null, subCat=null, subPres=null, subCfg=null, subQuad=null, subCM=null, subCD=null, subCMeta=null, subPesos=null, subCC=null;
 let setoresProdutoCfg=null; var _setTipos=[];
 const SETORES_DEFAULT={PAO_FRANCES:'quadra',MIUDEZA:'quadra',CUCAS:'quadra',PAO_DE_QUEIJO:'conf',MASSA_FOLHADA:'conf',SALGADOS_LANCHE:'conf',SALGADOS_KG:'conf'};
@@ -1149,10 +1163,11 @@ window.setClienteCom=function(c){ filtroClienteCom=c||''; render(); };
    Os mapas que não existem por cliente (dia da semana, tipo de produto) ficam
    vazios de propósito, e os cartões correspondentes são escondidos.          */
 function clientesDisponiveis(){
-  var uni={};
+  var uni={}, usaRota=filtroRotasCom.length>0, set={};
+  filtroRotasCom.forEach(function(r){ set[r]=1; });
   comercialClienteMes.forEach(function(d){
     var cs=d.clientes||{};
-    Object.keys(cs).forEach(function(k){ if(!uni[k]) uni[k]=cs[k].nome||k; });
+    Object.keys(cs).forEach(function(k){ if(usaRota && !set[rotaDoCliente(cs[k])]) return; if(!uni[k]) uni[k]=cs[k].nome||k; });
   });
   return Object.keys(uni).map(function(k){ return { chave:k, nome:uni[k] }; })
     .sort(function(a,b){ return String(a.nome).localeCompare(String(b.nome),'pt-BR'); });
@@ -1160,11 +1175,14 @@ function clientesDisponiveis(){
 function pintarSelCliente(){
   var el=document.getElementById('sel-cliente-com'); if(!el) return;
   var lista=clientesDisponiveis();
+  // cliente que não pertence às rotas marcadas deixa de valer
+  if(filtroClienteCom && !lista.some(function(c){ return c.chave===filtroClienteCom; })) filtroClienteCom='';
   var atual=filtroClienteCom;
-  if(el.dataset.n!==String(lista.length)){
+  var chave=String(lista.length)+'|'+filtroRotasCom.join('~');
+  if(el.dataset.n!==chave){
     el.innerHTML='<option value="">Todos os clientes ('+lista.length+')</option>'+
       lista.map(function(c){ return '<option value="'+esc(c.chave)+'">'+esc(c.nome)+'</option>'; }).join('');
-    el.dataset.n=String(lista.length);
+    el.dataset.n=chave;
   }
   if(el.value!==atual) el.value=atual;
 }
@@ -1195,6 +1213,104 @@ function docsDoCliente(chave){
       vendedores:vend, representantes:repm,
       tiposProduto:{}, tiposProdutoKg:{}, porDiaSemana:{},
       _cliente:true
+    });
+  });
+  return out;
+}
+
+/* ===== filtro de ROTAS (multi-seleção) =====
+   Nada novo no robô: comercialClienteMes já traz a rota de cada cliente em .reg.
+   Com rotas marcadas, somam-se os clientes daquelas rotas e monta-se um documento
+   por mês no MESMO formato de comercialMensal — igual ao filtro de cliente.
+   Limites herdados dessa base: apuração por mês inteiro, top N produtos por
+   cliente, e sem dia da semana / tipo de produto (o robô não quebra por rota).  */
+function rotaDoCliente(c){ var r=(c&&c.reg)?String(c.reg).trim():''; return r||'(sem rota)'; }
+function rotasDisponiveis(){
+  var uni={};
+  comercialClienteMes.forEach(function(d){
+    var cs=d.clientes||{};
+    Object.keys(cs).forEach(function(k){ var r=rotaDoCliente(cs[k]); uni[r]=(uni[r]||0)+((cs[k]&&cs[k].fat)||0); });
+  });
+  return Object.keys(uni).map(function(r){ return {nome:r, fat:uni[r]}; })
+    .sort(function(a,b){ return b.fat-a.fat; });
+}
+function pintarBtnRotas(){
+  var b=document.getElementById('btn-rotas-com'); if(!b) return;
+  var n=filtroRotasCom.length;
+  b.textContent=(n===0?'Todas as rotas':(n===1?filtroRotasCom[0]:n+' rotas'))+' ▾';
+  b.style.borderColor=n?'var(--primary)':'';
+  b.style.color=n?'var(--primary)':'';
+}
+function pintarListaRotas(){
+  var el=document.getElementById('rotas-lista'); if(!el) return;
+  var bi=document.getElementById('rotas-busca');
+  var q=((bi&&bi.value)||'').trim().toLowerCase();
+  var lista=rotasDisponiveis().filter(function(r){ return !q || r.nome.toLowerCase().indexOf(q)>=0; });
+  _rotasVis=lista.map(function(r){ return r.nome; });
+  if(!lista.length){ el.innerHTML='<div class="empty">Nenhuma rota encontrada.</div>'; return; }
+  el.innerHTML=lista.map(function(r,i){
+    var on=filtroRotasCom.indexOf(r.nome)>=0;
+    return '<label style="display:flex;align-items:center;gap:8px;padding:5px 2px;cursor:pointer;font-size:13px;">'+
+      '<input type="checkbox" '+(on?'checked':'')+' onchange="toggleRotaIdx('+i+')" style="accent-color:var(--primary);flex:0 0 auto;">'+
+      '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(r.nome)+'</span>'+
+      '<span style="font-size:11px;color:var(--muted);white-space:nowrap;">'+fmtMoneyCompact(r.fat)+'</span></label>';
+  }).join('');
+}
+window.toggleRotaIdx=function(i){
+  var nome=_rotasVis[i]; if(nome==null) return;
+  var k=filtroRotasCom.indexOf(nome);
+  if(k>=0) filtroRotasCom.splice(k,1); else filtroRotasCom.push(nome);
+  pintarBtnRotas(); render();
+};
+window.limparRotas=function(){ filtroRotasCom=[]; pintarBtnRotas(); pintarListaRotas(); render(); };
+window.toggleRotasBox=function(ev){
+  if(ev&&ev.stopPropagation) ev.stopPropagation();
+  var b=document.getElementById('rotas-box'); if(!b) return;
+  var abrir=(b.style.display==='none'||b.style.display==='');
+  if(abrir) pintarListaRotas();
+  b.style.display=abrir?'flex':'none';
+};
+window.fecharRotasBox=function(){ var b=document.getElementById('rotas-box'); if(b) b.style.display='none'; };
+document.addEventListener('click', function(ev){
+  var b=document.getElementById('rotas-box'); if(!b||b.style.display==='none') return;
+  var btn=document.getElementById('btn-rotas-com');
+  if(b.contains(ev.target)||(btn&&btn.contains(ev.target))) return;
+  b.style.display='none';
+});
+// documentos sintéticos no formato de comercialMensal, só das rotas escolhidas
+function docsDasRotas(rotas, cliChave){
+  var set={}; rotas.forEach(function(r){ set[r]=1; });
+  var out=[];
+  comercialClienteMes.forEach(function(d){
+    var cs=d.clientes||{}, fat=0, notas=0, achou=false;
+    var cli={}, pv={}, pq={}, reg={}, vend={}, repm={};
+    Object.keys(cs).forEach(function(k){
+      var c=cs[k]; if(!c) return;
+      var r=rotaDoCliente(c);
+      if(!set[r]) return;
+      if(cliChave && k!==cliChave) return;
+      achou=true;
+      var f=c.fat||0, nm=c.nome||k;
+      fat+=f; notas+=(c.notas||0);
+      cli[nm]=(cli[nm]||0)+f;
+      reg[r]=(reg[r]||0)+f;
+      if(c.vend) vend[c.vend]=(vend[c.vend]||0)+f;
+      if(c.rep)  repm[c.rep]=(repm[c.rep]||0)+f;
+      var pr=c.prod||{};
+      Object.keys(pr).forEach(function(n){
+        var a=pr[n];
+        if(Array.isArray(a)){ pv[n]=(pv[n]||0)+(a[0]||0); if(a.length>1) pq[n]=(pq[n]||0)+(a[1]||0); }
+        else pv[n]=(pv[n]||0)+(a||0);
+      });
+    });
+    if(!achou) return;
+    out.push({
+      periodo:d.periodo,
+      faturamento:fat, notas:notas, registros:notas,
+      clientes:cli, produtos:pv, produtosQtd:pq, regioes:reg,
+      vendedores:vend, representantes:repm,
+      tiposProduto:{}, tiposProdutoKg:{}, porDiaSemana:{},
+      _rota:true
     });
   });
   return out;
@@ -1638,22 +1754,35 @@ function render(){
   if(pagina==='config'){ pintarMetasLista(); renderPesos(); }
   if(pagina==='comercial'){
     const rr=range();
+    pintarBtnRotas(); pintarListaRotas();
     pintarSelCliente();
     const CLI=filtroClienteCom;
-    // por cliente só existe apuração MENSAL: o robô não guarda cliente por dia
-    const usarMensal=CLI ? true : ((periodo==='tudo')||(filtroAno!==''));
+    const ROT=filtroRotasCom.slice();
+    const _noMes=(d,de,ate)=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=de && ini<=ate; };
+    // por cliente/rota só existe apuração MENSAL: o robô não guarda esse detalhe por dia
+    const usarMensal=(CLI||ROT.length) ? true : ((periodo==='tudo')||(filtroAno!==''));
     let docs;
-    if(CLI){
+    if(ROT.length){
+      docs=docsDasRotas(ROT,CLI).filter(d=>_noMes(d,rr.de,rr.ate));
+    }
+    else if(CLI){
       docs=docsDoCliente(CLI).filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=rr.de && ini<=rr.ate; });
     }
     else if(usarMensal){ docs=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=rr.de && ini<=rr.ate; }); }
     else { docs=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=rr.de && dt<=rr.ate; }); }
     // cartões que não fazem sentido para um cliente só saem de cena
     document.querySelectorAll('.com-global').forEach(function(el){ el.style.display=CLI?'none':''; });
-    const S=CLI?'':filtroSetorCom;   // cliente × setor não existe na base
+    // por rota o robô não quebra dia da semana / tipo de produto, e a meta é global
+    if(!CLI && ROT.length){
+      ['cm-dow','cm-tipos','cm-tipos-kg','cm-meta'].forEach(function(id){
+        var e=document.getElementById(id), c=(e&&e.closest)?e.closest('.card'):null;
+        if(c) c.style.display='none';
+      });
+    }
+    const S=(CLI||ROT.length)?'':filtroSetorCom;   // cliente/rota × setor não existe na base
     const srcCom=d=> S ? ((d.setores&&d.setores[S])?d.setores[S]:null) : d;
     const fat=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.faturamento||0):0); },0);
-    (function(){ var stEl=document.getElementById('cm-status'); if(!stEl) return; if(!comCarregado){ stEl.textContent='⏳ Carregando dados do robô…'; stEl.style.color='var(--muted)'; return; } var parts=[]; var ts=comercialMeta&&comercialMeta.atualizadoEm; var dt=ts&&ts.toDate?ts.toDate():(ts?new Date(ts):null); if(dt) parts.push('Atualizado '+_haQuanto(dt)); if(S){ var temSet=docs.some(function(d){return d.setores;}); if(!temSet) parts.push('⚠️ o corte por setor aparece após o robô rodar com a classificação'); else if(fat===0) parts.push('sem faturamento para '+(S==='conf'?'Confeitaria':'Quadra')+' neste período'); } else if(docs.length===0){ parts.push('sem dados para o período selecionado'); } if(CLI){ var _nc=(comercialClienteMes[0]&&comercialClienteMes[0].topProdutos)||15; parts.push('cliente selecionado: apuração por mês inteiro, top '+_nc+' produtos'); } stEl.innerHTML=parts.join(' · '); stEl.style.color=(dt&&(Date.now()-dt.getTime())>3*3600*1000)?'var(--amber)':'var(--muted)'; })();
+    (function(){ var stEl=document.getElementById('cm-status'); if(!stEl) return; if(!comCarregado){ stEl.textContent='⏳ Carregando dados do robô…'; stEl.style.color='var(--muted)'; return; } var parts=[]; var ts=comercialMeta&&comercialMeta.atualizadoEm; var dt=ts&&ts.toDate?ts.toDate():(ts?new Date(ts):null); if(dt) parts.push('Atualizado '+_haQuanto(dt)); if(S){ var temSet=docs.some(function(d){return d.setores;}); if(!temSet) parts.push('⚠️ o corte por setor aparece após o robô rodar com a classificação'); else if(fat===0) parts.push('sem faturamento para '+(S==='conf'?'Confeitaria':'Quadra')+' neste período'); } else if(docs.length===0){ parts.push('sem dados para o período selecionado'); } if(CLI){ var _nc=(comercialClienteMes[0]&&comercialClienteMes[0].topProdutos)||15; parts.push('cliente selecionado: apuração por mês inteiro, top '+_nc+' produtos'); } if(!CLI&&ROT.length){ var _tot=0; comercialMensal.forEach(function(d){ var ini=mesData(d.periodo); var fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); if(fim>=rr.de&&ini<=rr.ate) _tot+=(d.faturamento||0); }); parts.push(ROT.length+' rota'+(ROT.length>1?'s':'')+' · apuração por mês inteiro'+(_tot>0?' · '+(fat/_tot*100).toFixed(1).replace('.',',')+'% do faturamento do período':'')); } stEl.innerHTML=parts.join(' · '); stEl.style.color=(dt&&(Date.now()-dt.getTime())>3*3600*1000)?'var(--amber)':'var(--muted)'; })();
     const reg=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.registros||0):0); },0);
     const notas=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.notas||0):0); },0);
     const mC={},mP={},mR={},mV={},mRep={},mTipo={}, mTipoKg={}, mPQ={};
@@ -1662,7 +1791,8 @@ function render(){
     const _durC=rr.ate-rr.de;
     const _antDeC=new Date(rr.de.getTime()-_durC-1), _antAteC=new Date(rr.de.getTime()-1);
     let docsAnt;
-    if(CLI){ docsAnt=docsDoCliente(CLI).filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_antDeC && ini<=_antAteC; }); }
+    if(ROT.length){ docsAnt=docsDasRotas(ROT,CLI).filter(d=>_noMes(d,_antDeC,_antAteC)); }
+    else if(CLI){ docsAnt=docsDoCliente(CLI).filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_antDeC && ini<=_antAteC; }); }
     else if(usarMensal){ docsAnt=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_antDeC && ini<=_antAteC; }); }
     else { docsAnt=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=_antDeC && dt<=_antAteC; }); }
     const fatAnt=docsAnt.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.faturamento||0):0); },0), notasAnt=docsAnt.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.notas||0):0); },0);
@@ -1683,7 +1813,7 @@ function render(){
             return tot>0 ? (fat/tot*100).toFixed(1).replace('.',',')+'%' : '–';
           })(), '🥇','#8b5cf6')
         : kpiCard('Clientes distintos', Object.keys(mC).length.toLocaleString('pt-BR'), '👥','#8b5cf6'));
-    document.getElementById('cm-mes').innerHTML=faturamentoChart(CLI?docsDoCliente(CLI):comercialMensal, S);
+    document.getElementById('cm-mes').innerHTML=faturamentoChart(ROT.length?docsDasRotas(ROT,CLI):(CLI?docsDoCliente(CLI):comercialMensal), S);
     document.getElementById('cm-clientes').innerHTML=rankingHTML(mapaParaArr(mC,8), fmtMoney);
     document.getElementById('cm-produtos').innerHTML=lollipopHTML(mapaParaArr(mP,8), fmtMoney);
     document.getElementById('cm-rep-mais').innerHTML=rankingHTML(mapaParaArr(mRep,8), fmtMoney);
@@ -1891,7 +2021,7 @@ window.nav=function(p){
   try{ localStorage.setItem('mc_last_page',p); }catch(e){}
   periodo='mes'; filtroAno=''; filtroMes=''; filtroDe=''; filtroAte=''; filtroSemana=''; filtroSetorCom=''; filtroClienteCom='';
   (function(){ var sa=document.getElementById('sel-ano'),sm=document.getElementById('sel-mes'),ss=document.getElementById('sel-semana'),rd=document.getElementById('range-de'),ra=document.getElementById('range-ate'),bx=document.getElementById('range-box'); if(sa)sa.value=''; if(sm)sm.value=''; if(ss)ss.value=''; if(rd)rd.value=''; if(ra)ra.value=''; if(bx)bx.style.display='none'; })();
-  (function(){ var w=document.getElementById('setor-wrap'),dv=document.getElementById('setor-div'),sc=document.getElementById('sel-setor-com'),cc=document.getElementById('sel-cliente-com'); var vis=(p==='comercial'); if(w)w.style.display=vis?'inline-flex':'none'; if(dv)dv.style.display=vis?'inline-block':'none'; if(sc)sc.value=''; filtroSetorCom=''; if(cc)cc.value=''; filtroClienteCom=''; })();
+  (function(){ var w=document.getElementById('setor-wrap'),dv=document.getElementById('setor-div'),sc=document.getElementById('sel-setor-com'),cc=document.getElementById('sel-cliente-com'); var vis=(p==='comercial'); if(w)w.style.display=vis?'inline-flex':'none'; if(dv)dv.style.display=vis?'inline-block':'none'; if(sc)sc.value=''; filtroSetorCom=''; if(cc)cc.value=''; filtroClienteCom=''; filtroRotasCom=[]; var rb=document.getElementById('rotas-box'); if(rb)rb.style.display='none'; var rbu=document.getElementById('rotas-busca'); if(rbu)rbu.value=''; pintarBtnRotas(); })();
   if(['panificacao','confeitaria','embalacao'].indexOf(p)>=0){ const s=document.getElementById('prod-sub'); if(s){ s.style.display='block'; document.getElementById('prod-chevron').textContent='▾'; } }
   document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===p));
   document.querySelectorAll('.page[id^="page-"]').forEach(pg=>pg.classList.remove('active'));
