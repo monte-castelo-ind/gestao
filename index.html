@@ -156,6 +156,73 @@
   .chip-sel{ padding:6px 10px; font-weight:600; }
   .dd{ position:relative; display:inline-block; }
   .dd-panel{ position:absolute; top:calc(100% + 6px); left:0; z-index:60; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px; box-shadow:var(--shadow); display:flex; align-items:center; gap:8px; white-space:nowrap; }
+  /* ---- ACESSOS (só admin) ---- */
+  .ac-wrap{ max-width:880px; }
+  .ac-bar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .ac-busca{ flex:1; min-width:180px; background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:11px; padding:10px 13px; font-size:14px; font-family:inherit; }
+  .ac-busca:focus{ outline:none; border-color:var(--primary); }
+  .ac-aviso{ font-size:12.5px; color:var(--muted); margin:-4px 0 14px; line-height:1.5; }
+  .ac-lista{ display:flex; flex-direction:column; gap:8px; }
+  .ac-row{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--card); border:1px solid var(--border); border-radius:13px; padding:12px 14px; cursor:pointer; font-family:inherit; color:var(--text); }
+  .ac-row:hover{ border-color:var(--primary); }
+  .ac-row:focus-visible, .ac-sw:focus-visible, .ac-seg button:focus-visible, .ac-tab:focus-visible{ outline:2px solid var(--primary); outline-offset:2px; }
+  .ac-row.novo{ border-left:4px solid var(--amber); }
+  .ac-av{ width:36px; height:36px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; background:var(--card-2); color:var(--text); border:1px solid var(--border); }
+  .ac-row-main{ flex:1; min-width:0; }
+  .ac-nome{ font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ac-email{ font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ac-apps{ font-size:12px; color:var(--muted); margin-top:4px; line-height:1.4; }
+  .ac-tags{ display:flex; gap:6px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
+  .ac-tag{ font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap; border:1px solid transparent; }
+  .ac-tag.admin{ background:var(--side-active); color:var(--side-active-text); }
+  .ac-tag.oper{ background:var(--card-2); color:var(--text); border-color:var(--border); }
+  .ac-tag.leit{ background:var(--card-2); color:var(--muted); border-color:var(--border); }
+  .ac-tag.bloq{ background:rgba(245,176,19,.16); color:#a46f00; }
+  html[data-theme="dark"] .ac-tag.bloq{ color:var(--amber); }
+  /* janela de edição: lateral no computador, sobe de baixo no celular */
+  .ac-fundo{ position:fixed; inset:0; background:rgba(0,0,0,.42); z-index:200; display:none; }
+  .ac-fundo.show{ display:block; }
+  .ac-ed{ position:fixed; top:0; right:0; bottom:0; width:min(460px,100vw); background:var(--bg); border-left:1px solid var(--border); z-index:201; display:none; flex-direction:column; box-shadow:var(--shadow); }
+  .ac-ed.show{ display:flex; }
+  .ac-ed-top{ padding:18px 20px 12px; border-bottom:1px solid var(--border); background:var(--card); }
+  .ac-ed-top .ac-x{ float:right; background:none; border:1px solid var(--border); color:var(--muted); border-radius:9px; width:34px; height:34px; cursor:pointer; font-size:15px; }
+  .ac-ed-nome{ width:calc(100% - 44px); font-size:17px; font-weight:700; background:transparent; border:1px solid transparent; border-radius:8px; color:var(--text); padding:4px 6px; margin-left:-6px; font-family:inherit; }
+  .ac-ed-nome:hover{ border-color:var(--border); }
+  .ac-ed-nome:focus{ outline:none; border-color:var(--primary); background:var(--card-2); }
+  .ac-ed-corpo{ flex:1; overflow:auto; padding:14px 20px 20px; }
+  .ac-sec{ background:var(--card); border:1px solid var(--border); border-radius:13px; padding:4px 14px; margin-bottom:10px; }
+  .ac-sec-t{ font-size:13px; font-weight:700; padding:10px 0 2px; color:var(--text); }
+  .ac-lin{ display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--border); }
+  .ac-sec-t + .ac-lin{ border-top:none; }
+  .ac-lin.sub{ padding-left:14px; }
+  .ac-lin.off{ opacity:.45; }
+  .ac-lin-txt{ flex:1; min-width:0; font-size:13.5px; }
+  .ac-lin-txt small{ display:block; font-size:11.5px; color:var(--muted); margin-top:1px; }
+  .ac-sw{ width:44px; height:26px; border-radius:13px; border:none; background:var(--track); position:relative; cursor:pointer; flex-shrink:0; transition:background .15s; }
+  .ac-sw::after{ content:""; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:left .15s; }
+  .ac-sw[aria-checked="true"]{ background:var(--primary); }
+  .ac-sw[aria-checked="true"]::after{ left:21px; }
+  .ac-sw:disabled{ cursor:not-allowed; opacity:.6; }
+  .ac-seg{ display:flex; background:var(--card-2); border:1px solid var(--border); border-radius:11px; padding:3px; gap:3px; margin:8px 0 6px; }
+  .ac-seg button{ flex:1; border:none; background:none; color:var(--muted); font-family:inherit; font-size:13px; font-weight:600; padding:8px 4px; border-radius:8px; cursor:pointer; }
+  .ac-seg button.on{ background:var(--card); color:var(--text); box-shadow:var(--shadow); }
+  .ac-seg button:disabled{ cursor:not-allowed; opacity:.5; }
+  .ac-nota{ font-size:12px; color:var(--muted); line-height:1.5; padding:2px 0 10px; }
+  .ac-abas{ display:flex; flex-wrap:wrap; gap:6px; padding:4px 0 10px 14px; }
+  .ac-tab{ font-family:inherit; font-size:12px; font-weight:600; padding:5px 10px; border-radius:16px; border:1px solid var(--border); background:var(--card-2); color:var(--text); cursor:pointer; }
+  .ac-tab.on{ background:var(--card); color:var(--muted); text-decoration:line-through; border-style:dashed; }
+  .ac-sel{ background:var(--card-2); border:1px solid var(--border); color:var(--text); border-radius:9px; padding:7px 9px; font-family:inherit; font-size:13px; }
+  .ac-extra{ font-size:12px; color:var(--muted); font-family:ui-monospace,Menlo,monospace; line-height:1.7; padding:4px 0 10px; word-break:break-word; }
+  .ac-ed-pe{ padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--border); background:var(--card); display:flex; gap:10px; align-items:center; }
+  .ac-st{ flex:1; font-size:12.5px; color:var(--muted); }
+  .ac-st.erro{ color:var(--red); }
+  .ac-salvar{ background:var(--primary); color:#fff; border:none; border-radius:10px; padding:11px 18px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .ac-salvar:disabled{ opacity:.45; cursor:default; }
+  .ac-rastro{ font-size:11.5px; color:var(--muted); margin-top:4px; }
+  @media (max-width:760px){
+    .ac-ed{ top:auto; left:0; width:100vw; height:92vh; border-left:none; border-top:1px solid var(--border); border-radius:18px 18px 0 0; overflow:hidden; }
+    .ac-tags{ flex-direction:column; align-items:flex-end; }
+  }
 </style>
 </head>
 <body>
@@ -207,6 +274,7 @@
     <button class="nav-item" data-page="predial" onclick="nav('predial')"><span class="ico">🏢</span> Manut. Predial</button>
     <button class="nav-item" data-page="comodato" onclick="nav('comodato')"><span class="ico">🔧</span> Manut. Comodato</button>
     <div class="sidebar-foot">
+      <button class="nav-item" data-page="acessos" id="nav-acessos" onclick="nav('acessos')" style="display:none;"><span class="ico">🔑</span> Acessos</button>
       <button class="nav-item" data-page="config" onclick="nav('config')"><span class="ico">⚙️</span> Configurações</button>
       <button class="nav-item" onclick="toggleTheme()"><span class="ico" id="theme-ico">🌙</span> <span id="theme-txt">Tema escuro</span></button>
       <button class="nav-item" onclick="sairApp()"><span class="ico">↩︎</span> Sair</button>
@@ -475,6 +543,36 @@
         </div>
       </div>
     </div>
+    <!-- ===== ACESSOS (só admin) ===== -->
+    <!-- Edita os documentos usuarios/{uid} do Comodato. A regra já restringe:
+         listar e alterar usuarios é só do admin. -->
+    <div class="page" id="page-acessos">
+      <div class="content ac-wrap">
+        <div class="ac-bar">
+          <input id="ac-busca" class="ac-busca" type="search" placeholder="Buscar por nome ou e-mail" oninput="acPintarLista()">
+          <button class="chip ac-filtro active" data-f="todos" onclick="acFiltro('todos')">Todos</button>
+          <button class="chip ac-filtro" data-f="novos" onclick="acFiltro('novos')">Esperando liberação <span id="ac-n-novos"></span></button>
+          <button class="chip ac-filtro" data-f="admin" onclick="acFiltro('admin')">Admins</button>
+          <button class="chip" onclick="acCarregar()" title="Recarregar a lista">↻</button>
+        </div>
+        <div class="ac-aviso">Quem nunca entrou não aparece aqui: a pessoa precisa tentar entrar uma vez em qualquer app, e aí você libera.</div>
+        <div id="ac-lista" class="ac-lista"><div class="empty">Carregando…</div></div>
+      </div>
+    </div>
+    <div class="ac-fundo" id="ac-fundo" onclick="acFechar()"></div>
+    <div class="ac-ed" id="ac-ed" role="dialog" aria-modal="true" aria-label="Acessos da pessoa">
+      <div class="ac-ed-top">
+        <button class="ac-x" onclick="acFechar()" aria-label="Fechar">✕</button>
+        <input id="ac-ed-nome" class="ac-ed-nome" placeholder="Nome" oninput="acSetNome(this.value)" aria-label="Nome">
+        <div class="ac-email" id="ac-ed-email"></div>
+        <div class="ac-rastro" id="ac-ed-rastro"></div>
+      </div>
+      <div class="ac-ed-corpo" id="ac-ed-corpo"></div>
+      <div class="ac-ed-pe">
+        <div class="ac-st" id="ac-st"></div>
+        <button class="ac-salvar" id="ac-salvar" onclick="acSalvar()" disabled>Salvar</button>
+      </div>
+    </div>
     <!-- ===== PRODUTOS MÊS A MÊS ===== -->
     <div class="page" id="page-prodmes">
       <div class="content">
@@ -545,7 +643,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const configComodato = { apiKey:"AIzaSyCH_t074MvkJn-qVMvCtLfEMaQHf_e_d7M", authDomain:"manutencao-comodato.firebaseapp.com", projectId:"manutencao-comodato", storageBucket:"manutencao-comodato.firebasestorage.app", messagingSenderId:"89709396101", appId:"1:89709396101:web:22ee225ffa806e07a269ec" };
@@ -1838,11 +1936,11 @@ function render(){
     document.getElementById('cm-dow').innerHTML=colunasHTML(_DIAS.map((nm,i)=>({nome:nm,val:_dow[String(i)]||0})), fmtMoneyCompact);
   }
   const fmt=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
-  document.getElementById('pg-sub').textContent = periodo==='tudo' ? 'Todo o período' : (fmt(r.de)+' – '+fmt(r.ate));
+  document.getElementById('pg-sub').textContent = pagina==='acessos' ? TITLES.acessos[1] : periodo==='tudo' ? 'Todo o período' : (fmt(r.de)+' – '+fmt(r.ate));
 }
 
 // NAV
-const TITLES={overview:['Visão Geral','Consolidado'],comodato:['Manutenção Comodato','Equipamentos'],predial:['Manutenção Predial','Chamados'],panificacao:['Panificação','Produção · quadra'],confeitaria:['Confeitaria','Produção'],embalacao:['Embalação','Produção · embalagem'],config:['Configurações','Ajustes do painel'],comercial:['Comercial','Faturamento (ERP)'],prodmes:['Produtos mês a mês','Faturamento e KG por produto, comparando meses']};
+const TITLES={overview:['Visão Geral','Consolidado'],comodato:['Manutenção Comodato','Equipamentos'],predial:['Manutenção Predial','Chamados'],panificacao:['Panificação','Produção · quadra'],confeitaria:['Confeitaria','Produção'],embalacao:['Embalação','Produção · embalagem'],config:['Configurações','Ajustes do painel'],comercial:['Comercial','Faturamento (ERP)'],prodmes:['Produtos mês a mês','Faturamento e KG por produto, comparando meses'],acessos:['Acessos','Quem entra em cada app']};
 /* ===== PRODUTOS MÊS A MÊS =====
    Usa o que já existe em comercialMensal: produtos (R$) e produtosQtd (pacotes).
    KG = pacotes x peso cadastrado. Nada novo no robô.                        */
@@ -2017,6 +2115,7 @@ window.exportarProdMes=function(){
 };
 
 window.nav=function(p){
+  if(p==='acessos' && currentRole!=='admin') p='overview';   // aba só do admin
   pagina=p;
   try{ localStorage.setItem('mc_last_page',p); }catch(e){}
   periodo='mes'; filtroAno=''; filtroMes=''; filtroDe=''; filtroAte=''; filtroSemana=''; filtroSetorCom=''; filtroClienteCom='';
@@ -2028,6 +2127,8 @@ window.nav=function(p){
   document.getElementById('page-'+p).classList.add('active');
   document.getElementById('pg-title').firstChild.textContent=TITLES[p][0];
   document.getElementById('pg-sub').textContent=TITLES[p][1];
+  var _ch=document.getElementById('chips'); if(_ch) _ch.style.display=(p==='acessos')?'none':'';
+  if(p==='acessos' && !acCarregado) acCarregar();
   if(p==='config') renderConfig();
   closeSidebar();
   render();
@@ -2081,6 +2182,7 @@ function liberar(d){
   if(_rbc) _rbc.style.display = currentRelatorios ? 'flex' : 'none';
   var _rbp=document.getElementById('p-rel-barra');
   if(_rbp) _rbp.style.display = currentRelatorios ? 'flex' : 'none';
+  var _na=document.getElementById('nav-acessos'); if(_na) _na.style.display=(currentRole==='admin')?'':'none';
   const nome=d.nome||sessaoEmail; document.getElementById('uname').textContent=nome;
   document.getElementById('uavatar').textContent=(nome||'?').trim().charAt(0).toUpperCase();
   if(!subE){ subE=onSnapshot(collection(dbC,'equipamentosEstoque'), s=>{ estoque=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.error('estoque:',e)); }
@@ -2096,6 +2198,217 @@ function liberar(d){
   if(!subPesos){ subPesos=onSnapshot(doc(dbC,'configGestao','pesos'), s=>{ var d=s.data(); pesosItens=(d&&Array.isArray(d.itens))?d.itens.slice():[]; buildPesosLive(); if(pagina==='config') renderPesos(); render(); }, e=>console.warn('pesos:',e.code||e.message)); }
   render();
 }
+
+// ===== ACESSOS: liberar pessoas e ligar/desligar permissões (só admin) =====
+// Lê a coleção usuarios uma vez ao abrir a aba (getDocs, não onSnapshot: é
+// lista pequena e não precisa ficar escutando). Grava só os campos mudados.
+// Segurança de verdade está na regra: listar e alterar usuarios é só do admin.
+var AC_GRUPOS=[
+  {app:'Gestão', main:'gestao', desc:'Entrar no painel da diretoria', subs:[
+    ['relatorios','Baixar os relatórios completos']]},
+  {app:'Autorizações', main:'assinaturas', desc:'Entrar e pedir autorização', subs:[
+    ['assinaAprova','Assinar autorizações'],
+    ['assFinanceiro','Financeiro: ver todas, verificar código e confirmar Pix']]},
+  {app:'Estoque de Peças', main:'pecas', desc:'Ver o estoque', subs:[
+    ['pecasMov','Lançar estoque e montar pedidos'],
+    ['pecasPreco','Financeiro: validar valores e mandar para assinatura'],
+    ['pecasAutoriza','Autorizar pedidos antigos no próprio Peças'],
+    ['pecasRecebe','Dar baixa no recebimento']]},
+  {app:'Frota / Logística', main:'frota', desc:'Ver a frota', subs:[
+    ['frotaMov','Gestão da frota: veículos, documentos e rotas'],
+    ['frotaLanc','Só lançar movimento e checklist'],
+    ['frotaCaixas','Conversão de caixas da expedição'],
+    ['frotaCobli','Cobli Conversor (vê o endereço completo dos clientes)']]},
+  {app:'Comercial', main:'comercial', desc:'Vendedor: cuida da própria carteira', subs:[
+    ['comercialGestor','Gerente: vê e altera todas as carteiras']]},
+  {app:'Custos', main:'custos', desc:'Ver e simular', subs:[
+    ['custosAdmin','Editar preços e configurações'],
+    ['custosFolha','Enviar a folha e salvar simulações']], ocultar:true},
+  {app:'Planner', main:'planner', desc:'Tarefas por área', subs:[
+    ['plannerAdmin','Administrar o Planner']]},
+  {app:'Compras', main:'compras', desc:'Requisições de compra', subs:[]},
+  {app:'DP', main:'dp', desc:'Departamento pessoal', subs:[]},
+  {app:'Manut. em Campo', main:'campo', desc:'App em construção', subs:[], papelCampo:true},
+  {app:'Preventivas', main:'preventivas', desc:'Ver máquinas e preventivas', subs:[
+    ['preventivasMov','Lançar preventivas']]}
+];
+var AC_ABAS_CUSTOS=[['produtos','Produtos'],['receitas','Receitas'],['mp','Matérias-primas'],['emb','Embalagens'],['sim','Simulação'],['folha','Folha'],['config','Configurações']];
+var AC_PAPEIS=[['leitura','Leitura'],['operador','Operador'],['admin','Admin']];
+var AC_CAMPO_PAPEIS=[['','—'],['gestor','Gestor'],['comercial','Comercial'],['tecnico','Técnico']];
+// campos que a tela conhece; o resto aparece em "Outros campos", só leitura
+var AC_CONHECIDOS=(function(){ var k=['nome','email','role','ativo','custosOcultar','campoPapel','acessosAlteradoPor','acessosAlteradoEm'];
+  AC_GRUPOS.forEach(function(g){ k.push(g.main); g.subs.forEach(function(s){ k.push(s[0]); }); }); return k; })();
+var acUsers=[], acFiltroAtual='todos', acCarregado=false;
+var acUid=null, acOrig=null, acDraft=null, acSalvando=false;
+
+function acEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function acSou(uid){ return !!(auth.currentUser && auth.currentUser.uid===uid); }
+function acNomeDe(u){ return (u.nome||'').trim() || (u.email||'').split('@')[0] || '(sem nome)'; }
+function acDataTxt(v){ try{ var d=v&&v.toDate?v.toDate():null; if(!d) return ''; return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function acResumo(u){
+  if(u.role==='admin') return 'Tudo, em todos os apps';
+  var a=AC_GRUPOS.filter(function(g){ return u[g.main]===true; }).map(function(g){ return g.app; });
+  return a.length ? a.join(', ') : 'Nenhum app liberado';
+}
+
+window.acCarregar=function(){
+  var el=document.getElementById('ac-lista'); if(el) el.innerHTML='<div class="empty">Carregando…</div>';
+  getDocs(collection(dbC,'usuarios')).then(function(s){
+    acUsers=s.docs.map(function(x){ return Object.assign({uid:x.id}, x.data()); });
+    acCarregado=true; acPintarLista();
+  }).catch(function(e){
+    console.error('usuarios:',e);
+    if(el) el.innerHTML='<div class="empty">Não foi possível carregar a lista ('+acEsc(e.code||e.message)+'). Só administradores abrem esta aba.</div>';
+  });
+};
+window.acFiltro=function(f){ acFiltroAtual=f; document.querySelectorAll('.ac-filtro').forEach(function(b){ b.classList.toggle('active', b.dataset.f===f); }); acPintarLista(); };
+window.acPintarLista=function(){
+  var el=document.getElementById('ac-lista'); if(!el||!acCarregado) return;
+  var q=((document.getElementById('ac-busca')||{}).value||'').trim().toLowerCase();
+  var novos=acUsers.filter(function(u){ return u.ativo!==true; }).length;
+  var nn=document.getElementById('ac-n-novos'); if(nn) nn.textContent=novos?'('+novos+')':'';
+  var l=acUsers.filter(function(u){
+    if(acFiltroAtual==='novos' && u.ativo===true) return false;
+    if(acFiltroAtual==='admin' && u.role!=='admin') return false;
+    if(q && (acNomeDe(u)+' '+(u.email||'')).toLowerCase().indexOf(q)<0) return false;
+    return true;
+  }).sort(function(a,b){
+    var ia=a.ativo===true?1:0, ib=b.ativo===true?1:0; if(ia!==ib) return ia-ib;   // esperando liberação primeiro
+    return acNomeDe(a).localeCompare(acNomeDe(b),'pt-BR');
+  });
+  if(!l.length){ el.innerHTML='<div class="empty">'+(acUsers.length?'Ninguém com esse filtro.':'Nenhuma pessoa cadastrada ainda.')+'</div>'; return; }
+  el.innerHTML=l.map(function(u){
+    var n=acNomeDe(u), papel=u.role||'leitura';
+    var tagP= papel==='admin' ? '<span class="ac-tag admin">Admin</span>' : papel==='operador' ? '<span class="ac-tag oper">Operador</span>' : '<span class="ac-tag leit">Leitura</span>';
+    var tagA= u.ativo===true ? '' : '<span class="ac-tag bloq">Esperando liberação</span>';
+    return '<button class="ac-row'+(u.ativo===true?'':' novo')+'" onclick="acAbrir(\''+acEsc(u.uid)+'\')">'
+      +'<span class="ac-av">'+acEsc(n.charAt(0).toUpperCase())+'</span>'
+      +'<span class="ac-row-main"><div class="ac-nome">'+acEsc(n)+(acSou(u.uid)?' <span style="color:var(--muted);font-weight:500;">(você)</span>':'')+'</div>'
+      +'<div class="ac-email">'+acEsc(u.email||u.uid)+'</div>'
+      +'<div class="ac-apps">'+acEsc(acResumo(u))+'</div></span>'
+      +'<span class="ac-tags">'+tagA+tagP+'</span></button>';
+  }).join('');
+};
+
+window.acAbrir=function(uid){
+  var u=acUsers.find(function(x){ return x.uid===uid; }); if(!u) return;
+  acUid=uid; acOrig=JSON.parse(JSON.stringify(acParaEdicao(u))); acDraft=JSON.parse(JSON.stringify(acOrig));
+  document.getElementById('ac-ed-nome').value=acDraft.nome;
+  document.getElementById('ac-ed-email').textContent=u.email||uid;
+  var por=u.acessosAlteradoPor, em=acDataTxt(u.acessosAlteradoEm);
+  document.getElementById('ac-ed-rastro').textContent= por ? 'Acessos alterados por '+por+(em?' em '+em:'') : '';
+  acSt('',false); acPintarEditor();
+  document.getElementById('ac-fundo').classList.add('show'); document.getElementById('ac-ed').classList.add('show');
+};
+// só os campos que a tela edita, com padrão para os que não existem no documento
+function acParaEdicao(u){
+  var d={ nome:(u.nome||'').trim(), role:u.role||'leitura', ativo:u.ativo===true,
+          custosOcultar:Array.isArray(u.custosOcultar)?u.custosOcultar.map(function(x){return String(x).trim().toLowerCase();}).sort():[],
+          campoPapel:u.campoPapel||'' };
+  AC_GRUPOS.forEach(function(g){ d[g.main]=u[g.main]===true; g.subs.forEach(function(s){ d[s[0]]=u[s[0]]===true; }); });
+  return d;
+}
+function acMudancas(){
+  var m={}; if(!acDraft||!acOrig) return m;
+  Object.keys(acDraft).forEach(function(k){ if(JSON.stringify(acDraft[k])!==JSON.stringify(acOrig[k])) m[k]=acDraft[k]; });
+  return m;
+}
+window.acFechar=function(){
+  if(acSalvando) return;
+  var n=Object.keys(acMudancas()).length;
+  if(n && !confirm('Há '+n+' alteração(ões) sem salvar. Fechar mesmo assim?')) return;
+  acUid=null; acOrig=null; acDraft=null;
+  document.getElementById('ac-fundo').classList.remove('show'); document.getElementById('ac-ed').classList.remove('show');
+};
+document.addEventListener('keydown',function(e){ if(e.key==='Escape' && acUid) acFechar(); });
+function acSt(t,erro){ var s=document.getElementById('ac-st'); if(s){ s.textContent=t; s.classList.toggle('erro',!!erro); } }
+function acAtualizarBotao(){
+  var n=Object.keys(acMudancas()).length, b=document.getElementById('ac-salvar');
+  if(b){ b.disabled=!n||acSalvando; b.textContent= n ? 'Salvar ('+n+')' : 'Salvar'; }
+  if(!acSalvando && n) acSt('',false);
+}
+function acSw(campo,lig,desab){
+  return '<button class="ac-sw" role="switch" aria-checked="'+(lig?'true':'false')+'"'+(desab?' disabled':'')
+    +' onclick="acToggle(\''+campo+'\')" aria-label="'+campo+'"></button>';
+}
+function acPintarEditor(){
+  var d=acDraft, eu=acSou(acUid), h='';
+  // Situação e papel
+  h+='<div class="ac-sec"><div class="ac-sec-t">Conta</div>'
+    +'<div class="ac-lin"><div class="ac-lin-txt">Liberada<small>'+(eu?'Você não pode bloquear a própria conta.':'Desligado, a pessoa não entra em nenhum app.')+'</small></div>'+acSw('ativo',d.ativo,eu)+'</div>'
+    +'<div class="ac-lin" style="display:block;"><div class="ac-lin-txt">Papel</div><div class="ac-seg">'
+    +AC_PAPEIS.map(function(p){ return '<button class="'+(d.role===p[0]?'on':'')+'"'+(eu&&p[0]!=='admin'?' disabled':'')+' onclick="acPapel(\''+p[0]+'\')">'+p[1]+'</button>'; }).join('')
+    +'</div><div class="ac-nota">'+(eu?'Você não pode tirar o próprio admin, para não ficar sem acesso. ':'')
+    +'Leitura só vê. Operador também edita no Manut. Comodato e entra na Gestão. Admin libera tudo em todos os apps.</div></div></div>';
+  if(d.role==='admin') h+='<div class="ac-nota" style="padding:0 4px 10px;">Como admin, a pessoa já tem tudo liberado. As chaves abaixo ficam guardadas e voltam a valer se ela deixar de ser admin.</div>';
+  AC_GRUPOS.forEach(function(g){
+    var on=d[g.main];
+    h+='<div class="ac-sec"><div class="ac-sec-t">'+acEsc(g.app)+'</div>'
+      +'<div class="ac-lin"><div class="ac-lin-txt">Entrar no app<small>'+acEsc(g.desc)+'</small></div>'+acSw(g.main,on,false)+'</div>';
+    g.subs.forEach(function(s){
+      h+='<div class="ac-lin sub'+(on?'':' off')+'"><div class="ac-lin-txt">'+acEsc(s[1])+'</div>'+acSw(s[0],d[s[0]],!on)+'</div>';
+    });
+    if(g.papelCampo){
+      h+='<div class="ac-lin sub'+(on?'':' off')+'"><div class="ac-lin-txt">Papel no Campo</div><select class="ac-sel"'+(on?'':' disabled')+' onchange="acCampoPapel(this.value)">'
+        +AC_CAMPO_PAPEIS.map(function(p){ return '<option value="'+p[0]+'"'+(d.campoPapel===p[0]?' selected':'')+'>'+p[1]+'</option>'; }).join('')+'</select></div>';
+    }
+    if(g.ocultar){
+      h+='<div class="ac-lin sub'+(on?'':' off')+'" style="display:block;"><div class="ac-lin-txt">Abas escondidas<small>Toque para esconder ou mostrar. É organização da tela, não sigilo.</small></div></div>'
+        +'<div class="ac-abas">'+AC_ABAS_CUSTOS.map(function(a){ var esc=d.custosOcultar.indexOf(a[0])>=0;
+          return '<button class="ac-tab'+(esc?' on':'')+'"'+(on?'':' disabled')+' aria-pressed="'+esc+'" onclick="acAba(\''+a[0]+'\')">'+a[1]+'</button>'; }).join('')+'</div>';
+    }
+    h+='</div>';
+  });
+  // campos que existem no documento mas a tela não conhece
+  var u=acUsers.find(function(x){ return x.uid===acUid; })||{};
+  var extras=Object.keys(u).filter(function(k){ return k!=='uid' && AC_CONHECIDOS.indexOf(k)<0; }).sort();
+  if(extras.length){
+    h+='<div class="ac-sec"><div class="ac-sec-t">Outros campos</div><div class="ac-nota" style="padding-bottom:0;">Estão no cadastro, mas esta tela não mexe neles.</div><div class="ac-extra">'
+      +extras.map(function(k){ var v=u[k]; var t=(v&&v.toDate)?acDataTxt(v):JSON.stringify(v); return acEsc(k)+': '+acEsc(t&&t.length>60?t.slice(0,60)+'…':t); }).join('<br>')+'</div></div>';
+  }
+  document.getElementById('ac-ed-corpo').innerHTML=h;
+  acAtualizarBotao();
+}
+window.acToggle=function(campo){
+  if(!acDraft||acSalvando) return;
+  if(campo==='ativo' && acSou(acUid)) return;
+  acDraft[campo]=!acDraft[campo]; acPintarEditor();
+};
+window.acPapel=function(p){
+  if(!acDraft||acSalvando) return;
+  if(acSou(acUid) && p!=='admin') return;
+  acDraft.role=p; acPintarEditor();
+};
+window.acCampoPapel=function(v){ if(!acDraft) return; acDraft.campoPapel=v; acAtualizarBotao(); };
+window.acAba=function(id){
+  if(!acDraft) return; var a=acDraft.custosOcultar, i=a.indexOf(id);
+  if(i>=0) a.splice(i,1); else a.push(id); a.sort(); acPintarEditor();
+};
+window.acSetNome=function(v){ if(!acDraft) return; acDraft.nome=String(v||'').trim(); acAtualizarBotao(); };
+
+window.acSalvar=function(){
+  var m=acMudancas(), n=Object.keys(m).length; if(!n||acSalvando||!acUid) return;
+  // trava de novo aqui, além dos botões: ninguém se tranca para fora
+  if(acSou(acUid) && (m.ativo===false || (m.role && m.role!=='admin'))){ acSt('Você não pode tirar o próprio acesso de admin.',true); return; }
+  var u=acUsers.find(function(x){ return x.uid===acUid; })||{};
+  if(m.role==='admin' && !confirm('Tornar '+acNomeDe(u)+' administrador?\n\nAdmin vê e altera tudo em todos os apps, inclusive esta tela de acessos.')) return;
+  if(m.ativo===false && !confirm('Bloquear '+acNomeDe(u)+'? A pessoa deixa de entrar em todos os apps.')) return;
+  var dados=Object.assign({}, m, { acessosAlteradoPor:sessaoEmail, acessosAlteradoEm:serverTimestamp() });
+  acSalvando=true; acAtualizarBotao(); acSt('Salvando…',false);
+  var uid=acUid;
+  updateDoc(doc(dbC,'usuarios',uid), dados).then(function(){
+    acSalvando=false;
+    var alvo=acUsers.find(function(x){ return x.uid===uid; });
+    if(alvo){ Object.keys(m).forEach(function(k){ alvo[k]=m[k]; }); alvo.acessosAlteradoPor=sessaoEmail; alvo.acessosAlteradoEm={toDate:function(){ return new Date(); }}; }
+    acPintarLista();
+    if(acUid===uid){ acOrig=JSON.parse(JSON.stringify(acDraft)); acPintarEditor(); acSt('Salvo. A pessoa vê a mudança ao reabrir o app.',false);
+      document.getElementById('ac-ed-rastro').textContent='Acessos alterados por '+sessaoEmail+' agora'; }
+  }).catch(function(e){
+    acSalvando=false; acAtualizarBotao();
+    console.error('salvar acessos:',e);
+    acSt(e.code==='permission-denied' ? 'O banco recusou: só administradores alteram acessos.' : 'Não salvou ('+(e.code||e.message)+'). Tente de novo.', true);
+  });
+};
 
 // AUTH
 const overlay=document.getElementById('authOverlay'), emailEl=document.getElementById('authEmail'), senhaEl=document.getElementById('authSenha'), btn=document.getElementById('authBtn'), erro=document.getElementById('authErro');
