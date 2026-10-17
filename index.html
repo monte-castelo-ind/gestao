@@ -211,6 +211,7 @@
   .ac-abas{ display:flex; flex-wrap:wrap; gap:6px; padding:4px 0 10px 14px; }
   .ac-tab{ font-family:inherit; font-size:12px; font-weight:600; padding:5px 10px; border-radius:16px; border:1px solid var(--border); background:var(--card-2); color:var(--text); cursor:pointer; }
   .ac-tab.on{ background:var(--card); color:var(--muted); text-decoration:line-through; border-style:dashed; }
+  .ac-tab.sel{ background:var(--primary); border-color:var(--primary); color:#fff; }
   .ac-sel{ background:var(--card-2); border:1px solid var(--border); color:var(--text); border-radius:9px; padding:7px 9px; font-family:inherit; font-size:13px; }
   .ac-extra{ font-size:12px; color:var(--muted); font-family:ui-monospace,Menlo,monospace; line-height:1.7; padding:4px 0 10px; word-break:break-word; }
   .ac-ed-pe{ padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--border); background:var(--card); display:flex; gap:10px; align-items:center; }
@@ -2209,6 +2210,7 @@ function liberar(d){
 var AC_GRUPOS=[
   {app:'Gestão', main:'gestao', desc:'Entrar no painel da diretoria', subs:[
     ['relatorios','Baixar os relatórios completos']]},
+  {app:'Produlog', main:'produlog', desc:'Produção: tablets dos setores e quem usa o Produlog', subs:[], setoresPl:true},
   {app:'Autorizações', main:'assinaturas', desc:'Entrar e pedir autorização', subs:[
     ['assinaAprova','Assinar autorizações'],
     ['assFinanceiro','Financeiro: ver todas, verificar código e confirmar Pix']]},
@@ -2235,6 +2237,10 @@ var AC_GRUPOS=[
   {app:'Preventivas', main:'preventivas', desc:'Ver máquinas e preventivas', subs:[
     ['preventivasMov','Lançar preventivas']]}
 ];
+// setores do Produlog (botões de PIN da tela inicial dele). Lista vazia = todos.
+var AC_PL_SETORES=[['confeitaria','Confeitaria'],['cozinha','Cozinha'],['embalagem','Embalagem'],['expedicao','Expedição'],['carregamento','Carregamento'],
+  ['estoque','Estoque e Contêiner'],['quadra','Quadra'],['container','Rafael'],['testes','Testes MP'],['contagem','Contagem'],['patrick','Patrick'],
+  ['simone','Simone - Financeiro'],['alteracoes','Alterações de Receita'],['comercial','Comercial'],['admin','Administrativo']];
 var AC_ABAS_CUSTOS=[['produtos','Produtos'],['receitas','Receitas'],['mp','Matérias-primas'],['emb','Embalagens'],['sim','Simulação'],['folha','Folha'],['config','Configurações']];
 // O campo role continua no banco (as regras e o Comodato usam), mas a tela
 // mostra duas chaves: Administrador (role admin) e, no Comodato, Editar
@@ -2242,7 +2248,7 @@ var AC_ABAS_CUSTOS=[['produtos','Produtos'],['receitas','Receitas'],['mp','Maté
 function acRoleDe(d){ return d.admin ? 'admin' : (d.comodatoEdita ? 'operador' : 'leitura'); }
 var AC_CAMPO_PAPEIS=[['','—'],['gestor','Gestor'],['comercial','Comercial'],['tecnico','Técnico']];
 // campos que a tela conhece; o resto aparece em "Outros campos", só leitura
-var AC_CONHECIDOS=(function(){ var k=['nome','email','role','ativo','custosOcultar','campoPapel','acessosAlteradoPor','acessosAlteradoEm'];
+var AC_CONHECIDOS=(function(){ var k=['nome','email','role','ativo','custosOcultar','produlogSetores','campoPapel','acessosAlteradoPor','acessosAlteradoEm'];
   AC_GRUPOS.forEach(function(g){ k.push(g.main); g.subs.forEach(function(s){ k.push(s[0]); }); }); return k; })();
 var acUsers=[], acFiltroAtual='todos', acCarregado=false;
 var acUid=null, acOrig=null, acDraft=null, acSalvando=false;
@@ -2311,6 +2317,7 @@ window.acAbrir=function(uid){
 function acParaEdicao(u){
   var d={ nome:(u.nome||'').trim(), admin:u.role==='admin', comodatoEdita:u.role==='operador', ativo:u.ativo===true,
           custosOcultar:Array.isArray(u.custosOcultar)?u.custosOcultar.map(function(x){return String(x).trim().toLowerCase();}).sort():[],
+          produlogSetores:Array.isArray(u.produlogSetores)?u.produlogSetores.map(function(x){return String(x).trim().toLowerCase();}).sort():[],
           campoPapel:u.campoPapel||'' };
   AC_GRUPOS.forEach(function(g){ d[g.main]=u[g.main]===true; g.subs.forEach(function(s){ d[s[0]]=u[s[0]]===true; }); });
   return d;
@@ -2362,6 +2369,11 @@ function acPintarEditor(){
       h+='<div class="ac-lin sub'+(on?'':' off')+'"><div class="ac-lin-txt">Papel no Campo</div><select class="ac-sel"'+(on?'':' disabled')+' onchange="acCampoPapel(this.value)">'
         +AC_CAMPO_PAPEIS.map(function(p){ return '<option value="'+p[0]+'"'+(d.campoPapel===p[0]?' selected':'')+'>'+p[1]+'</option>'; }).join('')+'</select></div>';
     }
+    if(g.setoresPl){
+      h+='<div class="ac-lin sub'+(on?'':' off')+'" style="display:block;"><div class="ac-lin-txt">Setores que aparecem<small>Nenhum marcado = todos. É organização da tela; o PIN de cada setor continua valendo.</small></div></div>'
+        +'<div class="ac-abas">'+AC_PL_SETORES.map(function(a){ var sel=d.produlogSetores.indexOf(a[0])>=0;
+          return '<button class="ac-tab'+(sel?' sel':'')+'"'+(on?'':' disabled')+' aria-pressed="'+sel+'" onclick="acPlSetor(\''+a[0]+'\')">'+a[1]+'</button>'; }).join('')+'</div>';
+    }
     if(g.ocultar){
       h+='<div class="ac-lin sub'+(on?'':' off')+'" style="display:block;"><div class="ac-lin-txt">Abas escondidas<small>Toque para esconder ou mostrar. É organização da tela, não sigilo.</small></div></div>'
         +'<div class="ac-abas">'+AC_ABAS_CUSTOS.map(function(a){ var esc=d.custosOcultar.indexOf(a[0])>=0;
@@ -2386,6 +2398,10 @@ window.acToggle=function(campo){
   acDraft[campo]=!acDraft[campo]; acPintarEditor();
 };
 window.acCampoPapel=function(v){ if(!acDraft) return; acDraft.campoPapel=v; acAtualizarBotao(); };
+window.acPlSetor=function(id){
+  if(!acDraft) return; var a=acDraft.produlogSetores, i=a.indexOf(id);
+  if(i>=0) a.splice(i,1); else a.push(id); a.sort(); acPintarEditor();
+};
 window.acAba=function(id){
   if(!acDraft) return; var a=acDraft.custosOcultar, i=a.indexOf(id);
   if(i>=0) a.splice(i,1); else a.push(id); a.sort(); acPintarEditor();
