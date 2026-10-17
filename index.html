@@ -656,9 +656,9 @@ const dbC = getFirestore(appC);
 const dbP = getFirestore(appP);
 const auth = getAuth(appC);
 const authP = getAuth(appP);
-const configProducao = { apiKey:"AIzaSyDY5ma_NbCmZ2dyXUjKm6GZQ3ibhwgcdmI", authDomain:"montecastelo-a0764.firebaseapp.com", projectId:"montecastelo-a0764", storageBucket:"montecastelo-a0764.firebasestorage.app", messagingSenderId:"158891969912", appId:"1:158891969912:web:0541e828e0e0743cef0c8d" };
-const appProd = initializeApp(configProducao, 'producao');
-const dbProd = getFirestore(appProd);
+// Produção: desde a migração, os dados do Produlog moram no próprio Comodato,
+// nas coleções com prefixo pl_ (antes era o projeto montecastelo-a0764).
+const dbProd = dbC;
 
 let periodo='mes', pagina='overview', filtroAno='', filtroMes='', filtroDe='', filtroAte='', filtroSemana='', filtroSetorCom='', filtroClienteCom='';
 let estoque=[], chamados=[], registros=[], prodCatalog={}, presencas=[], quadraRegistros=[], comercialMensal=[], comercialDiario=[], comercialMeta={}, comCarregado=false, _navRestaurado=false, pesosItens=[];
@@ -2195,10 +2195,10 @@ function liberar(d){
   if(!subCC){ subCC=onSnapshot(collection(dbC,'comercialClienteMes'), s=>{ comercialClienteMes=s.docs.map(x=>x.data()); render(); }, e=>console.warn('comercialClienteMes:',e.code||e.message)); }
   if(!subCMeta){ subCMeta=onSnapshot(doc(dbC,'comercialMeta','app'), snap=>{ comercialMeta=snap.exists()?snap.data():{}; render(); }, e=>console.warn('comercialMeta:',e.code||e.message)); }
   if(!subCfg){ subCfg=onSnapshot(doc(dbC,'configGestao','app'), snap=>{ if(snap.exists()){ const dd=snap.data(); if(dd.setoresProduto) setoresProdutoCfg=dd.setoresProduto; if(dd.conf||dd.panif||dd.emb){ if(dd.conf) config.conf=dd.conf; if(dd.panif) config.panif=dd.panif; if(dd.emb) config.emb=dd.emb; if(dd.comercial) config.comercial=dd.comercial; if(dd.comercialConf) config.comercialConf=dd.comercialConf; if(dd.comercialQuadra) config.comercialQuadra=dd.comercialQuadra; } else { config.conf={metaPadrao:dd.metaPadrao!=null?dd.metaPadrao:META_CONF_KG, metas:dd.metas||{}}; } } render(); }, e=>console.warn('config:',e.code||e.message)); }
-  if(!subR){ subR=onSnapshot(collection(dbProd,'registros'), s=>{ registros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('registros (produção):',e.code||e.message)); }
-  if(!subQuad){ subQuad=onSnapshot(collection(dbProd,'quadraRegistros'), s=>{ quadraRegistros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('quadraRegistros:',e.code||e.message)); }
-  if(!subCat){ subCat=onSnapshot(collection(dbProd,'produtosConfeitaria'), s=>{ prodCatalog={}; s.docs.forEach(x=>{const dd=x.data(); if(dd.cod!=null&&dd.cod!=='') prodCatalog['c:'+dd.cod]=dd.pesoPct||0; if(dd.nome) prodCatalog['n:'+dd.nome]=dd.pesoPct||0;}); render(); }, e=>console.warn('produtosConfeitaria:',e.code||e.message)); }
-  if(!subPres){ subPres=onSnapshot(collection(dbProd,'presencas'), s=>{ presencas=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('presencas:',e.code||e.message)); }
+  if(!subR){ subR=onSnapshot(collection(dbProd,'pl_registros'), s=>{ registros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('registros (produção):',e.code||e.message)); }
+  if(!subQuad){ subQuad=onSnapshot(collection(dbProd,'pl_quadraRegistros'), s=>{ quadraRegistros=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('quadraRegistros:',e.code||e.message)); }
+  if(!subCat){ subCat=onSnapshot(collection(dbProd,'pl_produtosConfeitaria'), s=>{ prodCatalog={}; s.docs.forEach(x=>{const dd=x.data(); if(dd.cod!=null&&dd.cod!=='') prodCatalog['c:'+dd.cod]=dd.pesoPct||0; if(dd.nome) prodCatalog['n:'+dd.nome]=dd.pesoPct||0;}); render(); }, e=>console.warn('produtosConfeitaria:',e.code||e.message)); }
+  if(!subPres){ subPres=onSnapshot(collection(dbProd,'pl_presencas'), s=>{ presencas=s.docs.map(x=>Object.assign({firestoreId:x.id},x.data())); render(); }, e=>console.warn('presencas:',e.code||e.message)); }
   if(!subPesos){ subPesos=onSnapshot(doc(dbC,'configGestao','pesos'), s=>{ var d=s.data(); pesosItens=(d&&Array.isArray(d.itens))?d.itens.slice():[]; buildPesosLive(); if(pagina==='config') renderPesos(); render(); }, e=>console.warn('pesos:',e.code||e.message)); }
   render();
 }
