@@ -2248,7 +2248,7 @@ var AC_ABAS_CUSTOS=[['produtos','Produtos'],['receitas','Receitas'],['mp','Maté
 function acRoleDe(d){ return d.admin ? 'admin' : (d.comodatoEdita ? 'operador' : 'leitura'); }
 var AC_CAMPO_PAPEIS=[['','—'],['gestor','Gestor'],['comercial','Comercial'],['tecnico','Técnico']];
 // campos que a tela conhece; o resto aparece em "Outros campos", só leitura
-var AC_CONHECIDOS=(function(){ var k=['nome','email','role','ativo','custosOcultar','produlogSetores','campoPapel','acessosAlteradoPor','acessosAlteradoEm'];
+var AC_CONHECIDOS=(function(){ var k=['nome','email','role','ativo','custosOcultar','produlogSetores','comodatoSolicita','campoPapel','acessosAlteradoPor','acessosAlteradoEm'];
   AC_GRUPOS.forEach(function(g){ k.push(g.main); g.subs.forEach(function(s){ k.push(s[0]); }); }); return k; })();
 var acUsers=[], acFiltroAtual='todos', acCarregado=false;
 var acUid=null, acOrig=null, acDraft=null, acSalvando=false;
@@ -2261,6 +2261,7 @@ function acResumo(u){
   if(u.role==='admin') return 'Tudo, em todos os apps';
   var a=AC_GRUPOS.filter(function(g){ return u[g.main]===true; }).map(function(g){ return g.app; });
   if(u.role==='operador') a.push('Manut. Comodato (edita)');
+  if(u.comodatoSolicita===true) a.push('Manut. Comodato (pede equipamento)');
   return a.length ? a.join(', ') : 'Nenhum app liberado';
 }
 
@@ -2315,7 +2316,7 @@ window.acAbrir=function(uid){
 };
 // só os campos que a tela edita, com padrão para os que não existem no documento
 function acParaEdicao(u){
-  var d={ nome:(u.nome||'').trim(), admin:u.role==='admin', comodatoEdita:u.role==='operador', ativo:u.ativo===true,
+  var d={ nome:(u.nome||'').trim(), admin:u.role==='admin', comodatoEdita:u.role==='operador', comodatoSolicita:u.comodatoSolicita===true, ativo:u.ativo===true,
           custosOcultar:Array.isArray(u.custosOcultar)?u.custosOcultar.map(function(x){return String(x).trim().toLowerCase();}).sort():[],
           produlogSetores:Array.isArray(u.produlogSetores)?u.produlogSetores.map(function(x){return String(x).trim().toLowerCase();}).sort():[],
           campoPapel:u.campoPapel||'' };
@@ -2356,7 +2357,9 @@ function acPintarEditor(){
   // Comodato ainda não tem chaves próprias: editar = papel operador
   h+='<div class="ac-sec"><div class="ac-sec-t">Manut. Comodato</div>'
     +'<div class="ac-lin"><div class="ac-lin-txt">Editar equipamentos<small>'+(d.admin?'Admin já edita.':'Desligado, a pessoa só vê o histórico. Ligado, também salva metas e configurações da Gestão.')+'</small></div>'
-    +acSw('comodatoEdita',d.admin||d.comodatoEdita,d.admin)+'</div></div>';
+    +acSw('comodatoEdita',d.admin||d.comodatoEdita,d.admin)+'</div>'
+    +'<div class="ac-lin"><div class="ac-lin-txt">Pedir equipamento (comercial)<small>Abre a aba Solicitações de equipamento para pedir entrega a um cliente. Quem edita equipamentos já vê e atende os pedidos.</small></div>'
+    +acSw('comodatoSolicita',d.comodatoSolicita,false)+'</div></div>';
   if(d.admin) h+='<div class="ac-nota" style="padding:0 4px 10px;">Como admin, a pessoa já tem tudo liberado. As chaves abaixo ficam guardadas e voltam a valer se ela deixar de ser admin.</div>';
   AC_GRUPOS.forEach(function(g){
     var on=d[g.main];
