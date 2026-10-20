@@ -266,6 +266,7 @@
     <button class="nav-item active" data-page="overview" onclick="nav('overview')"><span class="ico">📊</span> Visão Geral</button>
     <button class="nav-item" data-page="comercial" onclick="nav('comercial')"><span class="ico">💰</span> Comercial</button>
     <button class="nav-item" data-page="prodmes" onclick="nav('prodmes')"><span class="ico">📅</span> Produtos mês a mês</button>
+    <button class="nav-item" data-page="lojas" onclick="nav('lojas')"><span class="ico">🏪</span> Comparar lojas</button>
     <button class="nav-item" onclick="toggleProducao()"><span class="ico">🏭</span> Produção <span class="chevron" id="prod-chevron">▸</span></button>
     <div class="nav-sub" id="prod-sub" style="display:none;">
       <button class="nav-item" data-page="panificacao" onclick="nav('panificacao')"><span class="ico">🍞</span> Panificação</button>
@@ -607,6 +608,45 @@
           KG = pacotes vendidos × peso cadastrado em <strong>Configurações › Pesos</strong>. Produto sem peso aparece com KG zero.
           A variação compara o último mês com o anterior. Clique no cabeçalho do mês para ordenar por ele.
         </div>
+      </div>
+    </div>
+
+    <!-- ===== COMPARAR LOJAS ===== -->
+    <div class="page" id="page-lojas">
+      <div class="content">
+        <div id="lj-status" style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:16px;"></div>
+        <div class="card" style="margin-bottom:14px;position:relative;z-index:30;overflow:visible;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--muted);">Lojas:</span>
+            <div id="lj-sel" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+            <div style="position:relative;flex:1 1 260px;min-width:220px;">
+              <input type="text" id="lj-q" class="chip chip-sel" placeholder="Buscar loja por nome, código ou rota…" oninput="ljBusca()" onfocus="ljBusca()" autocomplete="off" style="width:100%;color:var(--text);">
+              <div id="lj-res" style="display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:999;background:var(--card,var(--bg-2));border:1px solid var(--border);border-radius:10px;max-height:320px;overflow:auto;box-shadow:0 12px 30px rgba(0,0,0,.35);"></div>
+            </div>
+            <button class="chip" onclick="ljLimpar()">Limpar</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+          <span style="font-size:12px;color:var(--muted);">Medida:</span>
+          <button class="chip" id="lj-m-pac" onclick="setLjMetrica('pac')">Pacotes</button>
+          <button class="chip" id="lj-m-kg"  onclick="setLjMetrica('kg')">KG</button>
+          <button class="chip" id="lj-m-fat" onclick="setLjMetrica('fat')">Faturamento</button>
+          <span style="width:1px;height:22px;background:var(--border);margin:2px 4px;"></span>
+          <span style="font-size:12px;color:var(--muted);">Setor:</span>
+          <select class="chip chip-sel" id="lj-setor" onchange="render()">
+            <option value="">Todos</option>
+            <option value="conf">Confeitaria</option>
+            <option value="quadra">Quadra (Panificação)</option>
+          </select>
+          <label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="lj-todas" onchange="render()"> só o que todas compraram</label>
+          <input type="text" id="lj-busca" class="chip chip-sel" placeholder="Buscar produto…" oninput="render()" style="min-width:190px;color:var(--text);">
+          <button class="chip" onclick="exportarLojas()" style="margin-left:auto;">⤓ CSV</button>
+        </div>
+        <div class="grid cols-4" id="lj-kpis"></div>
+        <div class="card" style="margin-top:14px;padding:0;overflow:hidden;">
+          <div style="overflow:auto;max-height:calc(100vh - 340px);"><table id="lj-tab" style="width:100%;border-collapse:collapse;font-size:12.5px;"></table></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6;" id="lj-nota"></div>
       </div>
     </div>
 
@@ -1850,6 +1890,7 @@ function render(){
   }
 
   if(pagina==='prodmes') renderProdMes();
+  if(pagina==='lojas') renderLojas();
   if(pagina==='config'){ pintarMetasLista(); renderPesos(); }
   if(pagina==='comercial'){
     const rr=range();
@@ -1941,7 +1982,7 @@ function render(){
 }
 
 // NAV
-const TITLES={overview:['Visão Geral','Consolidado'],comodato:['Manutenção Comodato','Equipamentos'],predial:['Manutenção Predial','Chamados'],panificacao:['Panificação','Produção · quadra'],confeitaria:['Confeitaria','Produção'],embalacao:['Embalação','Produção · embalagem'],config:['Configurações','Ajustes do painel'],comercial:['Comercial','Faturamento (ERP)'],prodmes:['Produtos mês a mês','Faturamento e KG por produto, comparando meses'],acessos:['Acessos','Quem entra em cada app']};
+const TITLES={lojas:['Comparar lojas','Produtos lado a lado, uma coluna por loja'],overview:['Visão Geral','Consolidado'],comodato:['Manutenção Comodato','Equipamentos'],predial:['Manutenção Predial','Chamados'],panificacao:['Panificação','Produção · quadra'],confeitaria:['Confeitaria','Produção'],embalacao:['Embalação','Produção · embalagem'],config:['Configurações','Ajustes do painel'],comercial:['Comercial','Faturamento (ERP)'],prodmes:['Produtos mês a mês','Faturamento e KG por produto, comparando meses'],acessos:['Acessos','Quem entra em cada app']};
 /* ===== PRODUTOS MÊS A MÊS =====
    Usa o que já existe em comercialMensal: produtos (R$) e produtosQtd (pacotes).
    KG = pacotes x peso cadastrado. Nada novo no robô.                        */
@@ -2113,6 +2154,173 @@ window.exportarProdMes=function(){
   a.href=URL.createObjectURL(blob);
   a.download='produtos-mes-a-mes-'+medida.toLowerCase()+'-'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
+};
+
+/* ===== COMPARAR LOJAS =====
+   Produtos lado a lado, uma coluna por loja (cliente), no período escolhido no
+   topo. Usa comercialClienteMes, que o robô grava por mês com os principais
+   produtos de cada cliente ({ produto: [valor, qtd] }). Limites dessa base:
+   apuração por mês inteiro e só os N produtos de maior valor de cada loja.
+   Código do produto: aparece quando o robô passar a gravá-lo (prodCod).     */
+let ljSel=[], ljMetrica='pac', ljOrdCol='total', ljOrdDir=-1;
+try{ ljSel=JSON.parse(localStorage.getItem('mc_lojas_sel')||'[]')||[]; }catch(e){ ljSel=[]; }
+function ljGuardar(){ try{ localStorage.setItem('mc_lojas_sel', JSON.stringify(ljSel)); }catch(e){} }
+window.setLjMetrica=function(m){ ljMetrica=m; render(); };
+window.ljOrd=function(col){ if(ljOrdCol===col) ljOrdDir=-ljOrdDir; else { ljOrdCol=col; ljOrdDir=(col==='nome'?1:-1); } render(); };
+/* todas as lojas que aparecem em algum mês, com nome, rota e representante do mês mais recente */
+function ljLojas(){
+  var m={};
+  comercialClienteMes.slice().sort(function(a,b){ return String(a.periodo).localeCompare(String(b.periodo)); }).forEach(function(d){
+    var cs=d.clientes||{};
+    Object.keys(cs).forEach(function(k){ var c=cs[k]||{}; m[k]={ chave:k, nome:c.nome||k, rota:c.reg||'', rep:c.rep||c.vend||'' }; });
+  });
+  return m;
+}
+function ljNorm(t){ return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase(); }
+var _ljRes=[];
+window.ljBusca=function(){
+  var box=document.getElementById('lj-res'), q=ljNorm(document.getElementById('lj-q').value).trim();
+  if(!q){ box.style.display='none'; return; }
+  var L=ljLojas(), ps=q.split(/\s+/);
+  _ljRes=Object.keys(L).map(function(k){ return L[k]; }).filter(function(x){
+    if(ljSel.indexOf(x.chave)>=0) return false;
+    var t=ljNorm(x.nome+' '+x.chave+' '+x.rota+' '+x.rep); return ps.every(function(p){ return t.indexOf(p)>=0; });
+  }).sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); }).slice(0,60);
+  box.innerHTML=(_ljRes.length>1?'<div onclick="ljAddTodas()" style="padding:9px 12px;cursor:pointer;font-size:12px;font-weight:700;color:var(--primary);border-bottom:1px solid var(--border);">+ Adicionar as '+Math.min(_ljRes.length,12-ljSel.length)+' encontradas</div>':'')
+    +(_ljRes.length?_ljRes.map(function(x,i){
+      return '<div onclick="ljAdd('+i+')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12.5px;" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
+        +'<b>'+esc(x.nome)+'</b><div style="font-size:11px;color:var(--muted);">cód. '+esc(x.chave)+(x.rota?' · rota '+esc(x.rota):'')+(x.rep?' · '+esc(x.rep):'')+'</div></div>'; }).join('')
+      :'<div style="padding:10px 12px;font-size:12px;color:var(--muted);">Nenhuma loja com esse nome.</div>');
+  box.style.display='block';
+};
+window.ljAdd=function(i){ var x=_ljRes[i]; if(!x) return; if(ljSel.length>=12){ alert('No máximo 12 lojas por vez.'); return; }
+  ljSel.push(x.chave); ljGuardar(); document.getElementById('lj-q').value=''; document.getElementById('lj-res').style.display='none'; render(); };
+window.ljAddTodas=function(){ _ljRes.forEach(function(x){ if(ljSel.length<12 && ljSel.indexOf(x.chave)<0) ljSel.push(x.chave); });
+  ljGuardar(); document.getElementById('lj-q').value=''; document.getElementById('lj-res').style.display='none'; render(); };
+window.ljTirar=function(k){ ljSel=ljSel.filter(function(x){ return x!==k; }); ljGuardar(); render(); };
+window.ljLimpar=function(){ ljSel=[]; ljGuardar(); render(); };
+document.addEventListener('click', function(ev){ var b=document.getElementById('lj-res'), q=document.getElementById('lj-q');
+  if(b && q && !b.contains(ev.target) && ev.target!==q) b.style.display='none'; });
+/* meses (inteiros) que tocam o período do topo */
+function ljMeses(){
+  var rr=range(), out=[], d=new Date(rr.de.getFullYear(), rr.de.getMonth(), 1);
+  while(d<=rr.ate && out.length<36){ out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); d.setMonth(d.getMonth()+1); }
+  return out;
+}
+/* produtos de um setor (Confeitaria / Quadra), pelo corte que o robô já grava em comercialMensal */
+function ljProdutosDoSetor(S, meses){
+  var set={};
+  comercialMensal.forEach(function(d){ if(meses.indexOf(d.periodo)<0) return; var src=(d.setores&&d.setores[S])||null; if(!src) return;
+    Object.keys(src.produtos||{}).forEach(function(n){ set[n]=1; }); Object.keys(src.produtosQtd||{}).forEach(function(n){ set[n]=1; }); });
+  return set;
+}
+function ljCodigo(nome){
+  for(var i=0;i<comercialClienteMes.length;i++){ var cs=comercialClienteMes[i].clientes||{};
+    for(var k in cs){ var pc=cs[k]&&cs[k].prodCod; if(pc && pc[nome]) return pc[nome]; } }
+  for(var j=0;j<comercialMensal.length;j++){ var m=comercialMensal[j].produtosCod; if(m && m[nome]) return m[nome]; }
+  return '';
+}
+function ljDados(){
+  var meses=ljMeses(), S=(document.getElementById('lj-setor')||{}).value||'', filtroSet=S?ljProdutosDoSetor(S, meses):null;
+  var L=ljLojas(), lojas=ljSel.filter(function(k){ return L[k]; }).map(function(k){ return L[k]; });
+  var linhas={}, temDado={};
+  comercialClienteMes.forEach(function(d){
+    if(meses.indexOf(d.periodo)<0) return;
+    var cs=d.clientes||{};
+    lojas.forEach(function(lj){
+      var c=cs[lj.chave]; if(!c) return; temDado[lj.chave]=1;
+      var pr=c.prod||{};
+      Object.keys(pr).forEach(function(nm){
+        if(filtroSet && !filtroSet[nm]) return;
+        var a=pr[nm], v=Array.isArray(a)?(a[0]||0):(a||0), q=Array.isArray(a)?(a[1]||0):0;
+        var R=linhas[nm]||(linhas[nm]={ nome:nm, peso:pmPeso(nm), l:{} });
+        var x=R.l[lj.chave]||(R.l[lj.chave]={ fat:0, pac:0 }); x.fat+=v; x.pac+=q;
+      });
+    });
+  });
+  var arr=Object.keys(linhas).map(function(nm){ var R=linhas[nm]; R.cod=ljCodigo(nm); return R; });
+  return { meses:meses, lojas:lojas, arr:arr, temDado:temDado, setor:S };
+}
+function ljValor(R, k){ var x=R.l[k]; if(!x) return null; return ljMetrica==='fat'?x.fat:(ljMetrica==='kg'?(R.peso!=null?x.pac*R.peso:0):x.pac); }
+function ljTotal(R, lojas){ var t=0; lojas.forEach(function(lj){ t+=(ljValor(R, lj.chave)||0); }); return t; }
+function ljFmt(v){
+  if(v==null) return '<span style="color:var(--muted)">–</span>';
+  if(ljMetrica==='fat') return fmtMoney(v);
+  if(ljMetrica==='kg') return v>0 ? v.toLocaleString('pt-BR',{maximumFractionDigits:0})+' kg' : '<span style="color:var(--muted)">0</span>';
+  return v.toLocaleString('pt-BR',{maximumFractionDigits:0});
+}
+function ljLista(D){
+  var q=String((document.getElementById('lj-busca')||{}).value||'').trim().toUpperCase();
+  var todas=(document.getElementById('lj-todas')||{}).checked;
+  var l=D.arr.filter(function(R){ if(q && R.nome.toUpperCase().indexOf(q)<0 && String(R.cod).toUpperCase().indexOf(q)<0) return false;
+    if(todas && D.lojas.some(function(lj){ return !R.l[lj.chave]; })) return false; return true; });
+  l.sort(function(a,b){
+    if(ljOrdCol==='nome') return a.nome.localeCompare(b.nome,'pt-BR')*ljOrdDir;
+    var va=ljOrdCol==='total'?ljTotal(a,D.lojas):(ljValor(a,ljOrdCol)||0), vb=ljOrdCol==='total'?ljTotal(b,D.lojas):(ljValor(b,ljOrdCol)||0);
+    return (vb-va)*(ljOrdDir<0?1:-1);
+  });
+  return l;
+}
+function renderLojas(){
+  ['pac','kg','fat'].forEach(function(m){ var b=document.getElementById('lj-m-'+m); if(b) b.className='chip'+(ljMetrica===m?' on':''); });
+  var D=ljDados(), lojas=D.lojas;
+  document.getElementById('lj-sel').innerHTML=lojas.map(function(lj){
+    return '<span class="chip on" style="display:inline-flex;align-items:center;gap:6px;" title="cód. '+esc(lj.chave)+(lj.rota?' · rota '+esc(lj.rota):'')+'">'+esc(lj.nome)
+      +' <b onclick="ljTirar(\''+esc(lj.chave).replace(/'/g,"\\'")+'\')" style="cursor:pointer;opacity:.75;">×</b></span>'; }).join('')
+    +(lojas.length?'':'<span style="font-size:12px;color:var(--muted);">nenhuma escolhida — busque ao lado (dá para adicionar várias de uma vez, ex.: todas as lojas de uma rede)</span>');
+  var mR=D.meses.map(pmRotulo), per=mR.length>1?mR[0]+' a '+mR[mR.length-1]:mR[0];
+  var nTop=(comercialClienteMes[0]&&comercialClienteMes[0].topProdutos)||15;
+  var semDado=lojas.filter(function(lj){ return !D.temDado[lj.chave]; });
+  var st=document.getElementById('lj-status');
+  st.textContent=!comCarregado?'⏳ Carregando dados do robô…':['Período: '+per+(D.meses.length>1?' ('+D.meses.length+' meses inteiros)':' (mês inteiro)'),
+    lojas.length+' loja'+(lojas.length===1?'':'s'), D.setor?'corte: '+(D.setor==='conf'?'Confeitaria':'Quadra'):'',
+    semDado.length?semDado.length+' sem compra no período':''].filter(Boolean).join(' · ');
+  var lista=ljLista(D);
+  var tot=0; lista.forEach(function(R){ tot+=ljTotal(R,lojas); });
+  var top=lista.slice().sort(function(a,b){ return ljTotal(b,lojas)-ljTotal(a,lojas); })[0];
+  document.getElementById('lj-kpis').innerHTML=
+    kpiCard('Lojas', lojas.length.toLocaleString('pt-BR'), '🏪','#8b5cf6')+
+    kpiCard('Produtos', lista.length.toLocaleString('pt-BR'), '📦','#3b82f6')+
+    kpiCard('Total ('+(ljMetrica==='fat'?'R$':(ljMetrica==='kg'?'kg':'pacotes'))+')', ljFmt(tot).replace(/<[^>]+>/g,''), '∑','#1f9d6b')+
+    kpiCard('Mais vendido', top?'<span style="font-size:15px;line-height:1.3;display:block;">'+esc(top.nome)+'</span>':'–', '🏆','#f5b013');
+  var temCod=lista.some(function(R){ return R.cod; });
+  var TH='position:sticky;top:0;background:var(--bg-2);padding:9px 10px;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;';
+  var cor=function(c){ return 'color:'+(ljOrdCol===c?'var(--primary)':'var(--muted)')+';'; };
+  var html='<thead><tr><th onclick="ljOrd(\'nome\')" style="'+TH+'left:0;z-index:3;text-align:left;'+cor('nome')+'">Produto</th>'
+    +(temCod?'<th style="'+TH+'text-align:left;color:var(--muted);cursor:default;">Código</th>':'')
+    +lojas.map(function(lj){ return '<th onclick="ljOrd(\''+esc(lj.chave).replace(/'/g,"\\'")+'\')" title="'+esc(lj.nome)+'" style="'+TH+'text-align:right;max-width:150px;'+cor(lj.chave)+'">'
+      +'<div style="max-width:170px;white-space:normal;line-height:1.3;margin-left:auto;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">'+esc(lj.nome)+'</div>'
+      +'<div style="font-size:9.5px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted);">cód. '+esc(lj.chave)+'</div></th>'; }).join('')
+    +'<th onclick="ljOrd(\'total\')" style="'+TH+'text-align:right;'+cor('total')+'">Total</th></tr></thead><tbody>';
+  var nCol=lojas.length+2+(temCod?1:0);
+  if(!lojas.length) html+='<tr><td colspan="'+nCol+'" style="padding:34px;text-align:center;color:var(--muted);">Escolha as lojas que quer comparar.</td></tr>';
+  else if(!lista.length) html+='<tr><td colspan="'+nCol+'" style="padding:34px;text-align:center;color:var(--muted);">Nenhum produto nesse filtro.</td></tr>';
+  lista.forEach(function(R){
+    html+='<tr><td style="position:sticky;left:0;background:var(--bg);padding:8px 12px;border-bottom:1px solid var(--border);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(R.nome)+'">'+esc(R.nome)
+        +(ljMetrica==='kg'&&R.peso==null?' <span style="font-size:9.5px;color:var(--amber);">sem peso</span>':'')+'</td>'
+      +(temCod?'<td style="padding:8px 10px;border-bottom:1px solid var(--border);font-family:\'JetBrains Mono\',monospace;font-size:11.5px;color:var(--muted);">'+esc(R.cod||'–')+'</td>':'')
+      +lojas.map(function(lj){ var v=ljValor(R, lj.chave);
+        return '<td style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;'+(v==null||v===0?'color:var(--muted);':'')+'">'+ljFmt(v)+'</td>'; }).join('')
+      +'<td style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--border);font-weight:700;font-variant-numeric:tabular-nums;">'+ljFmt(ljTotal(R,lojas))+'</td></tr>';
+  });
+  var TF='padding:9px 10px;text-align:right;font-weight:700;background:var(--bg-2);border-top:2px solid var(--border);font-variant-numeric:tabular-nums;';
+  var tf='<tfoot><tr><td style="position:sticky;left:0;'+TF+'text-align:left;padding-left:12px;">Total</td>'+(temCod?'<td style="'+TF+'"></td>':'')
+    +lojas.map(function(lj){ var s=0; lista.forEach(function(R){ s+=(ljValor(R,lj.chave)||0); }); return '<td style="'+TF+'">'+ljFmt(s)+'</td>'; }).join('')
+    +'<td style="'+TF+'">'+ljFmt(tot)+'</td></tr></tfoot>';
+  document.getElementById('lj-tab').innerHTML=html+'</tbody>'+(lojas.length&&lista.length?tf:'');
+  document.getElementById('lj-nota').innerHTML='O período segue os botões do topo, por <b>mês inteiro</b> (o robô fecha por mês). Cada loja mostra os <b>'+nTop+' produtos de maior valor</b> dela em cada mês: “–” quer dizer que o produto não está entre eles naquele período (ou que a loja não comprou). '
+    +'KG = pacotes × peso cadastrado em <b>Configurações › Pesos</b>. Clique no nome de uma loja para ordenar por ela.'
+    +(temCod?'':' O <b>código do produto</b> aparece numa coluna ao lado do nome quando o robô passar a gravá-lo.');
+}
+window.exportarLojas=function(){
+  var D=ljDados(), lista=ljLista(D), lojas=D.lojas; if(!lojas.length) return;
+  var nBR=function(v){ return v==null?'':String(Math.round(v*100)/100).replace('.',','); };
+  var medida=(ljMetrica==='fat'?'Faturamento':(ljMetrica==='kg'?'KG':'Pacotes'));
+  var linhas=[['Produto','Código'].concat(lojas.map(function(lj){ return lj.nome+' ('+lj.chave+')'; })).concat(['Total']).join(';')];
+  lista.forEach(function(R){ linhas.push([R.nome, R.cod||''].concat(lojas.map(function(lj){ return nBR(ljValor(R,lj.chave)); })).concat([nBR(ljTotal(R,lojas))]).join(';')); });
+  var blob=new Blob(['\ufeff'+linhas.join('\n')],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='comparar-lojas-'+medida.toLowerCase()+'-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
 };
 
 window.nav=function(p){
