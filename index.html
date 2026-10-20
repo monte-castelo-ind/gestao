@@ -684,7 +684,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const configComodato = { apiKey:"AIzaSyCH_t074MvkJn-qVMvCtLfEMaQHf_e_d7M", authDomain:"manutencao-comodato.firebaseapp.com", projectId:"manutencao-comodato", storageBucket:"manutencao-comodato.firebasestorage.app", messagingSenderId:"89709396101", appId:"1:89709396101:web:22ee225ffa806e07a269ec" };
@@ -2161,21 +2161,56 @@ window.exportarProdMes=function(){
    topo. Usa comercialClienteMes, que o robô grava por mês com os principais
    produtos de cada cliente ({ produto: [valor, qtd] }). Limites dessa base:
    apuração por mês inteiro e só os N produtos de maior valor de cada loja.
-   Código do produto: aparece quando o robô passar a gravá-lo (prodCod).     */
+   Base COMPLETA (robô novo): comercialLojaProd — um documento por loja com
+   TODOS os produtos de cada mês, pelo código do ERP, e o índice _idx com a
+   lista de lojas e o nome de cada código. Enquanto ela não existir (ou sem a
+   regra de leitura), a tela usa comercialClienteMes, com os limites acima.   */
 let ljSel=[], ljMetrica='pac', ljOrdCol='total', ljOrdDir=-1;
-try{ ljSel=JSON.parse(localStorage.getItem('mc_lojas_sel')||'[]')||[]; }catch(e){ ljSel=[]; }
-function ljGuardar(){ try{ localStorage.setItem('mc_lojas_sel', JSON.stringify(ljSel)); }catch(e){} }
+let ljIdx=null, ljIdxErro='', ljDocs={};          /* ljIdx: null = lendo · false = base completa indisponível */
+function ljChaveSel(){ return ljIdx ? 'mc_lojas_sel2' : 'mc_lojas_sel'; }
+function ljLerSel(){ try{ ljSel=JSON.parse(localStorage.getItem(ljChaveSel())||'[]')||[]; }catch(e){ ljSel=[]; } }
+function ljGuardar(){ try{ localStorage.setItem(ljChaveSel(), JSON.stringify(ljSel)); }catch(e){} }
+ljLerSel();
+function ljCarregarIdx(){
+  if(ljIdx!==null || ljCarregarIdx._lendo) return; ljCarregarIdx._lendo=true;
+  getDoc(doc(dbC,'comercialLojaProd','_idx')).then(function(snap){
+    ljCarregarIdx._lendo=false;
+    if(snap.exists() && snap.data().lojas){ ljIdx=snap.data(); ljLerSel(); } else { ljIdx=false; ljIdxErro='o robô ainda não gravou a base completa'; }
+    render();
+  }).catch(function(e){ ljCarregarIdx._lendo=false; ljIdx=false; ljIdxErro=(e&&e.code==='permission-denied')?'sem a regra de leitura da base completa (comercialLojaProd)':'não foi possível ler a base completa'; console.warn('comercialLojaProd:', e); render(); });
+}
+/* documento de cada loja escolhida (base completa), lido sob demanda */
+function ljCarregarDocs(){
+  if(!ljIdx) return;
+  ljSel.forEach(function(k){
+    if(ljDocs[k]!==undefined) return; ljDocs[k]=null;
+    getDoc(doc(dbC,'comercialLojaProd',k)).then(function(snap){ ljDocs[k]=snap.exists()?snap.data():{ meses:{} }; render(); })
+      .catch(function(e){ ljDocs[k]={ meses:{}, erro:true }; console.warn('comercialLojaProd/'+k, e); render(); });
+  });
+}
 window.setLjMetrica=function(m){ ljMetrica=m; render(); };
 window.ljOrd=function(col){ if(ljOrdCol===col) ljOrdDir=-ljOrdDir; else { ljOrdCol=col; ljOrdDir=(col==='nome'?1:-1); } render(); };
 /* todas as lojas que aparecem em algum mês, com nome, rota e representante do mês mais recente */
 function ljLojas(){
   var m={};
+  if(ljIdx){
+    var lj=ljIdx.lojas||{};
+    Object.keys(lj).forEach(function(k){ var x=lj[k]||{};
+      m[k]={ chave:k, nome:x.n||k, cod:x.c?(x.c+(x.l?'-'+x.l:'')):'', cnpj:ljDoc(x.d), cidade:x.ci||'', bairro:x.b||'',
+             rota:x.r||'', rep:x.p||'', ult:x.u||'' }; });
+    return m;
+  }
   comercialClienteMes.slice().sort(function(a,b){ return String(a.periodo).localeCompare(String(b.periodo)); }).forEach(function(d){
     var cs=d.clientes||{};
     Object.keys(cs).forEach(function(k){ var c=cs[k]||{}; m[k]={ chave:k, nome:c.nome||k, rota:c.reg||'', rep:c.rep||c.vend||'' }; });
   });
   return m;
 }
+/* CNPJ/CPF formatado; lojas da mesma rede costumam ter o mesmo nome — o que diferencia é o ID e o endereço */
+function ljDoc(d){ d=String(d||'').replace(/\D/g,''); if(d.length===14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
+  if(d.length===11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/,'$1.$2.$3-$4'); return d; }
+function ljOnde(x){ return [x.bairro, x.cidade].filter(Boolean).join(', '); }
+function ljId(x){ return x.cod || x.cnpj || x.chave; }
 function ljNorm(t){ return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase(); }
 var _ljRes=[];
 window.ljBusca=function(){
@@ -2184,12 +2219,14 @@ window.ljBusca=function(){
   var L=ljLojas(), ps=q.split(/\s+/);
   _ljRes=Object.keys(L).map(function(k){ return L[k]; }).filter(function(x){
     if(ljSel.indexOf(x.chave)>=0) return false;
-    var t=ljNorm(x.nome+' '+x.chave+' '+x.rota+' '+x.rep); return ps.every(function(p){ return t.indexOf(p)>=0; });
+    var t=ljNorm([x.nome, x.chave, x.cod, x.cnpj, x.cidade, x.bairro, x.rota, x.rep].join(' ')); return ps.every(function(p){ return t.indexOf(p)>=0; });
   }).sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); }).slice(0,60);
   box.innerHTML=(_ljRes.length>1?'<div onclick="ljAddTodas()" style="padding:9px 12px;cursor:pointer;font-size:12px;font-weight:700;color:var(--primary);border-bottom:1px solid var(--border);">+ Adicionar as '+Math.min(_ljRes.length,12-ljSel.length)+' encontradas</div>':'')
     +(_ljRes.length?_ljRes.map(function(x,i){
       return '<div onclick="ljAdd('+i+')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12.5px;" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">'
-        +'<b>'+esc(x.nome)+'</b><div style="font-size:11px;color:var(--muted);">cód. '+esc(x.chave)+(x.rota?' · rota '+esc(x.rota):'')+(x.rep?' · '+esc(x.rep):'')+'</div></div>'; }).join('')
+        +'<b>'+esc(x.nome)+'</b>'+(ljOnde(x)?' <span style="font-size:11.5px;color:var(--muted);">· '+esc(ljOnde(x))+'</span>':'')
+        +'<div style="font-size:11px;color:var(--muted);">'+(x.cod?'cód. '+esc(x.cod):'')+(x.cnpj?(x.cod?' · ':'')+'CNPJ '+esc(x.cnpj):'')+(!x.cod&&!x.cnpj?'cód. '+esc(x.chave):'')
+        +(x.rota?' · rota '+esc(x.rota):'')+(x.rep?' · '+esc(x.rep):'')+(x.ult?' · última compra '+esc(pmRotulo(x.ult)):'')+'</div></div>'; }).join('')
       :'<div style="padding:10px 12px;font-size:12px;color:var(--muted);">Nenhuma loja com esse nome.</div>');
   box.style.display='block';
 };
@@ -2197,7 +2234,7 @@ window.ljAdd=function(i){ var x=_ljRes[i]; if(!x) return; if(ljSel.length>=12){ 
   ljSel.push(x.chave); ljGuardar(); document.getElementById('lj-q').value=''; document.getElementById('lj-res').style.display='none'; render(); };
 window.ljAddTodas=function(){ _ljRes.forEach(function(x){ if(ljSel.length<12 && ljSel.indexOf(x.chave)<0) ljSel.push(x.chave); });
   ljGuardar(); document.getElementById('lj-q').value=''; document.getElementById('lj-res').style.display='none'; render(); };
-window.ljTirar=function(k){ ljSel=ljSel.filter(function(x){ return x!==k; }); ljGuardar(); render(); };
+window.ljTirar=function(k){ delete ljDocs[k]; ljSel=ljSel.filter(function(x){ return x!==k; }); ljGuardar(); render(); };
 window.ljLimpar=function(){ ljSel=[]; ljGuardar(); render(); };
 document.addEventListener('click', function(ev){ var b=document.getElementById('lj-res'), q=document.getElementById('lj-q');
   if(b && q && !b.contains(ev.target) && ev.target!==q) b.style.display='none'; });
@@ -2223,7 +2260,23 @@ function ljCodigo(nome){
 function ljDados(){
   var meses=ljMeses(), S=(document.getElementById('lj-setor')||{}).value||'', filtroSet=S?ljProdutosDoSetor(S, meses):null;
   var L=ljLojas(), lojas=ljSel.filter(function(k){ return L[k]; }).map(function(k){ return L[k]; });
-  var linhas={}, temDado={};
+  var linhas={}, temDado={}, lendo=0;
+  if(ljIdx){
+    var nomes=ljIdx.produtos||{};
+    lojas.forEach(function(lj){
+      var d=ljDocs[lj.chave]; if(!d){ lendo++; return; }
+      meses.forEach(function(ym){
+        var pr=(d.meses||{})[ym]; if(!pr) return; temDado[lj.chave]=1;
+        Object.keys(pr).forEach(function(cod){
+          var nm=nomes[cod]||cod; if(filtroSet && !filtroSet[nm]) return;
+          var a=pr[cod]||[0,0];
+          var R=linhas[cod]||(linhas[cod]={ nome:nm, cod:(nm!==cod?cod:''), peso:pmPeso(nm), l:{} });
+          var x=R.l[lj.chave]||(R.l[lj.chave]={ fat:0, pac:0 }); x.fat+=(a[0]||0); x.pac+=(a[1]||0);
+        });
+      });
+    });
+    return { meses:meses, lojas:lojas, arr:Object.keys(linhas).map(function(k){ return linhas[k]; }), temDado:temDado, setor:S, completa:true, lendo:lendo };
+  }
   comercialClienteMes.forEach(function(d){
     if(meses.indexOf(d.periodo)<0) return;
     var cs=d.clientes||{};
@@ -2239,7 +2292,7 @@ function ljDados(){
     });
   });
   var arr=Object.keys(linhas).map(function(nm){ var R=linhas[nm]; R.cod=ljCodigo(nm); return R; });
-  return { meses:meses, lojas:lojas, arr:arr, temDado:temDado, setor:S };
+  return { meses:meses, lojas:lojas, arr:arr, temDado:temDado, setor:S, completa:false, lendo:0 };
 }
 function ljValor(R, k){ var x=R.l[k]; if(!x) return null; return ljMetrica==='fat'?x.fat:(ljMetrica==='kg'?(R.peso!=null?x.pac*R.peso:0):x.pac); }
 function ljTotal(R, lojas){ var t=0; lojas.forEach(function(lj){ t+=(ljValor(R, lj.chave)||0); }); return t; }
@@ -2262,17 +2315,19 @@ function ljLista(D){
   return l;
 }
 function renderLojas(){
+  ljCarregarIdx(); ljCarregarDocs();
   ['pac','kg','fat'].forEach(function(m){ var b=document.getElementById('lj-m-'+m); if(b) b.className='chip'+(ljMetrica===m?' on':''); });
   var D=ljDados(), lojas=D.lojas;
   document.getElementById('lj-sel').innerHTML=lojas.map(function(lj){
-    return '<span class="chip on" style="display:inline-flex;align-items:center;gap:6px;" title="cód. '+esc(lj.chave)+(lj.rota?' · rota '+esc(lj.rota):'')+'">'+esc(lj.nome)
+    return '<span class="chip on" style="display:inline-flex;align-items:center;gap:6px;" title="'+esc([lj.cod?'cód. '+lj.cod:'', lj.cnpj?'CNPJ '+lj.cnpj:'', ljOnde(lj), lj.rota?'rota '+lj.rota:''].filter(Boolean).join(' · '))+'">'+esc(lj.nome)
+      +' <span style="opacity:.6;font-weight:500;">'+esc(ljOnde(lj)||ljId(lj))+'</span>'
       +' <b onclick="ljTirar(\''+esc(lj.chave).replace(/'/g,"\\'")+'\')" style="cursor:pointer;opacity:.75;">×</b></span>'; }).join('')
     +(lojas.length?'':'<span style="font-size:12px;color:var(--muted);">nenhuma escolhida — busque ao lado (dá para adicionar várias de uma vez, ex.: todas as lojas de uma rede)</span>');
   var mR=D.meses.map(pmRotulo), per=mR.length>1?mR[0]+' a '+mR[mR.length-1]:mR[0];
   var nTop=(comercialClienteMes[0]&&comercialClienteMes[0].topProdutos)||15;
   var semDado=lojas.filter(function(lj){ return !D.temDado[lj.chave]; });
   var st=document.getElementById('lj-status');
-  st.textContent=!comCarregado?'⏳ Carregando dados do robô…':['Período: '+per+(D.meses.length>1?' ('+D.meses.length+' meses inteiros)':' (mês inteiro)'),
+  st.textContent=(ljIdx===null||!comCarregado)?'⏳ Carregando dados do robô…':[D.lendo?'⏳ lendo '+D.lendo+' loja'+(D.lendo>1?'s':'')+'…':'', 'Período: '+per+(D.meses.length>1?' ('+D.meses.length+' meses inteiros)':' (mês inteiro)'),
     lojas.length+' loja'+(lojas.length===1?'':'s'), D.setor?'corte: '+(D.setor==='conf'?'Confeitaria':'Quadra'):'',
     semDado.length?semDado.length+' sem compra no período':''].filter(Boolean).join(' · ');
   var lista=ljLista(D);
@@ -2290,7 +2345,8 @@ function renderLojas(){
     +(temCod?'<th style="'+TH+'text-align:left;color:var(--muted);cursor:default;">Código</th>':'')
     +lojas.map(function(lj){ return '<th onclick="ljOrd(\''+esc(lj.chave).replace(/'/g,"\\'")+'\')" title="'+esc(lj.nome)+'" style="'+TH+'text-align:right;max-width:150px;'+cor(lj.chave)+'">'
       +'<div style="max-width:170px;white-space:normal;line-height:1.3;margin-left:auto;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">'+esc(lj.nome)+'</div>'
-      +'<div style="font-size:9.5px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted);">cód. '+esc(lj.chave)+'</div></th>'; }).join('')
+      +'<div style="font-size:9.5px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted);">'+(lj.cod?'cód. ':(lj.cnpj?'CNPJ ':'cód. '))+esc(ljId(lj))+'</div>'
+      +(ljOnde(lj)?'<div style="font-size:9.5px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted);max-width:170px;margin-left:auto;white-space:normal;">'+esc(ljOnde(lj))+'</div>':'')+'</th>'; }).join('')
     +'<th onclick="ljOrd(\'total\')" style="'+TH+'text-align:right;'+cor('total')+'">Total</th></tr></thead><tbody>';
   var nCol=lojas.length+2+(temCod?1:0);
   if(!lojas.length) html+='<tr><td colspan="'+nCol+'" style="padding:34px;text-align:center;color:var(--muted);">Escolha as lojas que quer comparar.</td></tr>';
@@ -2308,15 +2364,17 @@ function renderLojas(){
     +lojas.map(function(lj){ var s=0; lista.forEach(function(R){ s+=(ljValor(R,lj.chave)||0); }); return '<td style="'+TF+'">'+ljFmt(s)+'</td>'; }).join('')
     +'<td style="'+TF+'">'+ljFmt(tot)+'</td></tr></tfoot>';
   document.getElementById('lj-tab').innerHTML=html+'</tbody>'+(lojas.length&&lista.length?tf:'');
-  document.getElementById('lj-nota').innerHTML='O período segue os botões do topo, por <b>mês inteiro</b> (o robô fecha por mês). Cada loja mostra os <b>'+nTop+' produtos de maior valor</b> dela em cada mês: “–” quer dizer que o produto não está entre eles naquele período (ou que a loja não comprou). '
-    +'KG = pacotes × peso cadastrado em <b>Configurações › Pesos</b>. Clique no nome de uma loja para ordenar por ela.'
-    +(temCod?'':' O <b>código do produto</b> aparece numa coluna ao lado do nome quando o robô passar a gravá-lo.');
+  document.getElementById('lj-nota').innerHTML='O período segue os botões do topo, por <b>mês inteiro</b> (o robô fecha por mês). '
+    +(D.completa ? 'Base completa: <b>todos</b> os produtos de cada loja, com o código do ERP; “–” quer dizer que a loja não comprou o produto no período. '
+                 : 'Cada loja mostra os <b>'+nTop+' produtos de maior valor</b> dela em cada mês: “–” quer dizer que o produto não está entre eles naquele período (ou que a loja não comprou)'
+                   +(ljIdxErro?' — base completa indisponível: '+esc(ljIdxErro)+'.':'.')+' ')
+    +'KG = pacotes × peso cadastrado em <b>Configurações › Pesos</b>. Clique no nome de uma loja para ordenar por ela.';
 }
 window.exportarLojas=function(){
   var D=ljDados(), lista=ljLista(D), lojas=D.lojas; if(!lojas.length) return;
   var nBR=function(v){ return v==null?'':String(Math.round(v*100)/100).replace('.',','); };
   var medida=(ljMetrica==='fat'?'Faturamento':(ljMetrica==='kg'?'KG':'Pacotes'));
-  var linhas=[['Produto','Código'].concat(lojas.map(function(lj){ return lj.nome+' ('+lj.chave+')'; })).concat(['Total']).join(';')];
+  var linhas=[['Produto','Código'].concat(lojas.map(function(lj){ return lj.nome+' ('+ljId(lj)+(ljOnde(lj)?' · '+ljOnde(lj):'')+')'; })).concat(['Total']).join(';')];
   lista.forEach(function(R){ linhas.push([R.nome, R.cod||''].concat(lojas.map(function(lj){ return nBR(ljValor(R,lj.chave)); })).concat([nBR(ljTotal(R,lojas))]).join(';')); });
   var blob=new Blob(['\ufeff'+linhas.join('\n')],{type:'text/csv;charset=utf-8;'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
