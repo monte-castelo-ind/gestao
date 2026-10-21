@@ -2327,6 +2327,11 @@ function renderLojas(){
   var nTop=(comercialClienteMes[0]&&comercialClienteMes[0].topProdutos)||15;
   var semDado=lojas.filter(function(lj){ return !D.temDado[lj.chave]; });
   var st=document.getElementById('lj-status');
+  /* sem a base completa, avisa no topo o porquê (lojas de mesmo nome ficam juntas na base antiga) */
+  var aviso=document.getElementById('lj-aviso');
+  if(!aviso){ aviso=document.createElement('div'); aviso.id='lj-aviso'; st.parentNode.insertBefore(aviso, st.nextSibling); }
+  aviso.innerHTML=(ljIdx===false) ? '<div style="margin:0 0 12px;padding:10px 13px;border-radius:10px;font-size:12.5px;border:1px solid rgba(245,176,19,.45);background:rgba(245,176,19,.09);color:var(--text);">'
+    +'⚠ <b>Base completa indisponível</b> — '+esc(ljIdxErro||'motivo desconhecido')+'. Mostrando a base antiga: lojas com o <b>mesmo nome ficam juntas</b> e só os principais produtos de cada uma.</div>' : '';
   st.textContent=(ljIdx===null||!comCarregado)?'⏳ Carregando dados do robô…':[D.lendo?'⏳ lendo '+D.lendo+' loja'+(D.lendo>1?'s':'')+'…':'', 'Período: '+per+(D.meses.length>1?' ('+D.meses.length+' meses inteiros)':' (mês inteiro)'),
     lojas.length+' loja'+(lojas.length===1?'':'s'), D.setor?'corte: '+(D.setor==='conf'?'Confeitaria':'Quadra'):'',
     semDado.length?semDado.length+' sem compra no período':''].filter(Boolean).join(' · ');
