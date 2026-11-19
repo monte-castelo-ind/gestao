@@ -311,6 +311,9 @@ document.documentElement.setAttribute('data-theme',t);document.documentElement.s
 [data-mc="diretoria"] .navbtn.on, [data-mc="diretoria"] .chip.active, [data-mc="diretoria"] .auth-card button,
 [data-mc="diretoria"] .uav, [data-mc="diretoria"] .ac-salvar, [data-mc="diretoria"] .ac-tab.sel,
 [data-mc="diretoria"] [style*="background:var(--primary)"]{ color:#1a1400 !important; }
+/* dourado mais vivo escolhido pelo João (19/11/2026, opção B) — por enquanto só na Gestão;
+   se ficar, passa para o mc-base.css (área Diretoria: Gestão, Planner e hub) */
+html[data-mc="diretoria"]{ --area:#f2b705 !important; --area-rgb:242,183,5 !important; }
 [data-mc="diretoria"] .hero{ background:linear-gradient(135deg,#9c7c18,#5a460c); }
 [data-mc="diretoria"][data-theme="light"] .mais-it.on{ color:var(--text); }
 @media (max-width:900px){ [data-mc="diretoria"] .navbtn.on{ color:#1a1400 !important; } }
