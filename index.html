@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="dark" data-mc="manutencao">
+<html lang="pt-BR" data-theme="dark" data-mc="diretoria">
 <head>
-<script>/* Visual da Gestão no molde dos apps (o mesmo do Comercial e da Logística), com o verde.
+<script>/* Visual da Gestão no molde dos apps (o mesmo do Comercial e da Logística), com o dourado da Diretoria.
    Escuro grafite é o padrão; a escolha da pessoa fica em mc_gestao_theme. */
 (function(){var t='dark';try{var g=localStorage.getItem('mc_gestao_theme');if(g==='dark'||g==='light')t=g;}catch(e){}
-document.documentElement.setAttribute('data-theme',t);document.documentElement.setAttribute('data-mc','manutencao');})();</script>
+document.documentElement.setAttribute('data-theme',t);document.documentElement.setAttribute('data-mc','diretoria');})();</script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
@@ -305,6 +305,16 @@ document.documentElement.setAttribute('data-theme',t);document.documentElement.s
   }
 </style>
 <link rel="stylesheet" href="https://monte-castelo-ind.github.io/mc-base.css?v=1">
+<style>
+/* Dourado da Diretoria: texto branco em cima do dourado fica fraco de ler, então
+   o que tem fundo na cor da área usa texto escuro. Gráficos continuam verde/azul. */
+[data-mc="diretoria"] .navbtn.on, [data-mc="diretoria"] .chip.active, [data-mc="diretoria"] .auth-card button,
+[data-mc="diretoria"] .uav, [data-mc="diretoria"] .ac-salvar, [data-mc="diretoria"] .ac-tab.sel,
+[data-mc="diretoria"] [style*="background:var(--primary)"]{ color:#1a1400 !important; }
+[data-mc="diretoria"] .hero{ background:linear-gradient(135deg,#9c7c18,#5a460c); }
+[data-mc="diretoria"][data-theme="light"] .mais-it.on{ color:var(--text); }
+@media (max-width:900px){ [data-mc="diretoria"] .navbtn.on{ color:#1a1400 !important; } }
+</style>
 </head>
 <body>
 
