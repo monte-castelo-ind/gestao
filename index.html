@@ -695,7 +695,7 @@ document.documentElement.setAttribute('data-theme',t);document.documentElement.s
             <option value="quadra">Quadra (Panificação)</option>
           </select>
           <input type="text" id="pm-busca" class="chip chip-sel" placeholder="Buscar produto…" oninput="render()" style="min-width:190px;color:var(--text);">
-          <button class="chip" onclick="exportarProdMes()" style="margin-left:auto;">⤓ CSV</button>
+          <button class="chip" onclick="exportarProdMes()" style="margin-left:auto;">⤓ Excel</button>
         </div>
         <div class="grid cols-4" id="pm-kpis"></div>
         <div class="card" style="margin-top:14px;padding:0;overflow:hidden;">
@@ -737,7 +737,7 @@ document.documentElement.setAttribute('data-theme',t);document.documentElement.s
           </select>
           <label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="lj-todas" onchange="render()"> só o que todas compraram</label>
           <input type="text" id="lj-busca" class="chip chip-sel" placeholder="Buscar produto…" oninput="render()" style="min-width:190px;color:var(--text);">
-          <button class="chip" onclick="exportarLojas()" style="margin-left:auto;">⤓ CSV</button>
+          <button class="chip" onclick="exportarLojas()" style="margin-left:auto;">⤓ Excel</button>
         </div>
         <div class="grid cols-4" id="lj-kpis"></div>
         <div class="card" style="margin-top:14px;padding:0;overflow:hidden;">
@@ -919,7 +919,7 @@ window.relatorioCompleto=function(){
       +'<button data-o="pac"'+(defOrd==='pac'?' class="on"':'')+'>Pacotes</button>'
       +'<button data-o="az">A &rarr; Z</button></div>'
       +'<div class="busca">'+svgLupa+'<input id="q-'+id+'" type="text" placeholder="'+buscaPh+'" autocomplete="off"></div>'
-      +'<button class="exp" data-exp="'+id+'" title="Exportar CSV">&#8595; CSV</button>'
+      +'<button class="exp" data-exp="'+id+'" title="Baixar em Excel">&#8595; Excel</button>'
       +'</div>'
       +(rodape?'<div style="font-size:11.5px;color:var(--muted);margin:-4px 0 10px;">'+rodape+'</div>':'')
       +'<div class="tw"><table><thead><tr><th class="r">#</th><th>'+col1+'</th><th class="v">Pacotes</th><th class="v">KG</th><th class="v">Faturamento</th></tr></thead>'
@@ -956,7 +956,7 @@ window.relatorioCompleto=function(){
       +'<h2>'+titulo+' <span class="cnt" id="c-'+id+'"></span></h2>'
       +'<div class="tb" id="tb-'+id+'"><button data-o="queda" class="on">Maiores quedas</button><button data-o="alta">Maiores altas</button><button data-o="az">A &rarr; Z</button></div>'
       +'<div class="busca">'+svgLupa+'<input id="q-'+id+'" type="text" placeholder="'+buscaPh+'" autocomplete="off"></div>'
-      +'<button class="exp" data-exp="'+id+'" title="Exportar CSV">&#8595; CSV</button>'
+      +'<button class="exp" data-exp="'+id+'" title="Baixar em Excel">&#8595; Excel</button>'
       +'</div>'
       +'<div class="tw"><table><thead><tr><th class="r">#</th><th>'+col1+'</th><th class="v">Atual</th><th class="v">Anterior</th><th class="v">Varia&ccedil;&atilde;o</th></tr></thead>'
       +'<tbody id="body-'+id+'"></tbody><tfoot id="foot-'+id+'"></tfoot></table></div></section>';
@@ -970,7 +970,7 @@ window.relatorioCompleto=function(){
       +'<div class="tb" data-sec="'+sec.id+'"><button data-o="desc" class="on">Maior &rarr; menor</button><button data-o="asc">Menor &rarr; maior</button><button data-o="az">A &rarr; Z</button></div>'
       +'<div class="busca"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
       +'<input id="q-'+sec.id+'" type="text" placeholder="Buscar '+sec.col.toLowerCase()+'&hellip;" autocomplete="off"></div>'
-      +'<button class="exp" data-exp="'+sec.id+'" title="Exportar CSV">&#8595; CSV</button>'
+      +'<button class="exp" data-exp="'+sec.id+'" title="Baixar em Excel">&#8595; Excel</button>'
       +'</div>'
       +'<div class="tw"><table><thead><tr><th class="r">#</th><th>'+sec.col+'</th><th class="v">Faturamento</th><th class="r">%</th><th class="r">% acum.</th></tr></thead>'
       +'<tbody id="tb-'+sec.id+'"></tbody><tfoot id="tf-'+sec.id+'"></tfoot></table></div></section>';
@@ -1121,8 +1121,9 @@ window.relatorioCompleto=function(){
     +'  render();'
     +'}'
     +'compareInit("vcli",VARCLI,"Cliente"); compareInit("vpro",VARPRO,"Produto");'
+    +'function cvx(t){ if(t==null) return ""; if(typeof t==="number") return t; var s=String(t).trim(); var z=s.replace(/^R[$] ?/,"").replace(/ ?(kg|d|un)$/,""); if(/^-?[0-9]{1,3}([.][0-9]{3})*(,[0-9]+)?$/.test(z)||/^-?[0-9]+(,[0-9]+)?$/.test(z)){ if(/^0[0-9]/.test(z)) return s; return parseFloat(z.split(".").join("").replace(",",".")); } return s; }function t2a(t){ var r=[]; t.querySelectorAll("tr").forEach(function(tr){ var c=[]; tr.querySelectorAll("th,td").forEach(function(x){ c.push(x.textContent.trim()); }); r.push(c); }); return r; }function xlLoad(){ return new Promise(function(ok,no){ if(window.XLSX) return ok(); var e=document.createElement("script"); e.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; e.onload=function(){ ok(); }; e.onerror=function(){ no(new Error("sem conexão com a internet")); }; document.head.appendChild(e); }); }function xl(file,aoa){ xlLoad().then(function(){ var rows=aoa.map(function(r,i){ return i===0?r:r.map(cvx); }); var ws=XLSX.utils.aoa_to_sheet(rows); ws["!cols"]=(rows[0]||[]).map(function(_,j){ var m=8; rows.forEach(function(r){ var v=r[j]; var l=(v==null?0:String(v).length); if(l>m) m=l; }); return {wch:Math.min(m+2,60)}; }); var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Dados"); XLSX.writeFile(wb,String(file||"export").replace(/[.]csv$/,"")+".xlsx"); }).catch(function(e){ alert("Não foi possível gerar o Excel: "+e.message); }); }'
     +'function toCSV(o){var s=";";function e(c){var t=(c==null?"":String(c));if(/[;\\n]/.test(t)||t.indexOf(String.fromCharCode(34))>=0){t=String.fromCharCode(34)+t.replace(/"/g,String.fromCharCode(34)+String.fromCharCode(34))+String.fromCharCode(34);}return t;}return o.headers.map(e).join(s)+String.fromCharCode(10)+o.rows.map(function(r){return r.map(e).join(s);}).join(String.fromCharCode(10));}'
-    +'document.querySelectorAll("[data-exp]").forEach(function(btn){ btn.onclick=function(){ var id=btn.getAttribute("data-exp"); var fn=EXP[id]; if(!fn) return; var o=fn(); var blob=new Blob([String.fromCharCode(65279)+toCSV(o)],{type:"text/csv;charset=utf-8"}); var u=URL.createObjectURL(blob); var a=document.createElement("a"); a.href=u; a.download=o.file; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(u);},2000); }; });';
+    +'document.querySelectorAll("[data-exp]").forEach(function(btn){ btn.onclick=function(){ var id=btn.getAttribute("data-exp"); var fn=EXP[id]; if(!fn) return; var o=fn(); xl(o.file,[o.headers].concat(o.rows)); }; });';
 
   var html='<!DOCTYPE html><html lang="pt-BR" data-theme="'+tema+'"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
     +'<title>Relatório Comercial · Monte Castelo</title>'
@@ -1173,7 +1174,7 @@ window.relatorioComodato=function(){
 
   function sec(id,titulo,cnt,head,body,file){
     return '<section><div class="sec-top"><h2>'+titulo+(cnt!=null?' <span class="cnt">'+cnt+'</span>':'')+'</h2>'
-      +(file?'<button class="exp" data-csv="t-'+id+'" data-file="'+file+'">&#8595; CSV</button>':'')
+      +(file?'<button class="exp" data-csv="t-'+id+'" data-file="'+file+'">&#8595; Excel</button>':'')
       +'</div><div class="tw"><table id="t-'+id+'"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div></section>';
   }
 
@@ -1226,8 +1227,8 @@ window.relatorioComodato=function(){
     +'.empty{color:var(--muted);font-style:italic;padding:10px;text-align:center;}'
     +'@media print{.pr,.exp{display:none!important;}section,.kpi,header.rp{box-shadow:none;break-inside:avoid;}}';
 
-  var innerJs='function t2c(t){var r=[];t.querySelectorAll("tr").forEach(function(tr){var c=[];tr.querySelectorAll("th,td").forEach(function(x){c.push(String.fromCharCode(34)+x.textContent.trim().replace(/"/g,String.fromCharCode(34)+String.fromCharCode(34))+String.fromCharCode(34));});r.push(c.join(";"));});return r.join("\\r\\n");}'
-    +'document.querySelectorAll("[data-csv]").forEach(function(b){b.onclick=function(){var t=document.getElementById(b.getAttribute("data-csv"));if(!t)return;var csv=String.fromCharCode(65279)+t2c(t);var bl=new Blob([csv],{type:"text/csv;charset=utf-8"});var u=URL.createObjectURL(bl);var a=document.createElement("a");a.href=u;a.download=b.getAttribute("data-file")||"export.csv";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u);},2000);};});';
+  var innerJs='function cvx(t){ if(t==null) return ""; if(typeof t==="number") return t; var s=String(t).trim(); var z=s.replace(/^R[$] ?/,"").replace(/ ?(kg|d|un)$/,""); if(/^-?[0-9]{1,3}([.][0-9]{3})*(,[0-9]+)?$/.test(z)||/^-?[0-9]+(,[0-9]+)?$/.test(z)){ if(/^0[0-9]/.test(z)) return s; return parseFloat(z.split(".").join("").replace(",",".")); } return s; }function t2a(t){ var r=[]; t.querySelectorAll("tr").forEach(function(tr){ var c=[]; tr.querySelectorAll("th,td").forEach(function(x){ c.push(x.textContent.trim()); }); r.push(c); }); return r; }function xlLoad(){ return new Promise(function(ok,no){ if(window.XLSX) return ok(); var e=document.createElement("script"); e.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; e.onload=function(){ ok(); }; e.onerror=function(){ no(new Error("sem conexão com a internet")); }; document.head.appendChild(e); }); }function xl(file,aoa){ xlLoad().then(function(){ var rows=aoa.map(function(r,i){ return i===0?r:r.map(cvx); }); var ws=XLSX.utils.aoa_to_sheet(rows); ws["!cols"]=(rows[0]||[]).map(function(_,j){ var m=8; rows.forEach(function(r){ var v=r[j]; var l=(v==null?0:String(v).length); if(l>m) m=l; }); return {wch:Math.min(m+2,60)}; }); var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Dados"); XLSX.writeFile(wb,String(file||"export").replace(/[.]csv$/,"")+".xlsx"); }).catch(function(e){ alert("Não foi possível gerar o Excel: "+e.message); }); }function t2c(t){var r=[];t.querySelectorAll("tr").forEach(function(tr){var c=[];tr.querySelectorAll("th,td").forEach(function(x){c.push(String.fromCharCode(34)+x.textContent.trim().replace(/"/g,String.fromCharCode(34)+String.fromCharCode(34))+String.fromCharCode(34));});r.push(c.join(";"));});return r.join("\\r\\n");}'
+    +'document.querySelectorAll("[data-csv]").forEach(function(b){b.onclick=function(){var t=document.getElementById(b.getAttribute("data-csv"));if(!t)return;xl(b.getAttribute("data-file")||"export",t2a(t));};});';
 
   var html='<!doctype html><html data-theme="'+tema+'" lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório · Manut. Comodato</title><style>'+css+'</style></head><body><div class="wrap">'
     +'<header class="rp"><div class="mark">🔧</div><div><h1>Monte Castelo <span>· Relatório Manut. Comodato</span></h1><div class="meta">Período: '+periodo+' · Gerado em '+gerado+'</div></div></header>'
@@ -1265,7 +1266,7 @@ window.relatorioPredial=function(){
 
   function sec(id,titulo,cnt,head,body,file){
     return '<section><div class="sec-top"><h2>'+titulo+(cnt!=null?' <span class="cnt">'+cnt+'</span>':'')+'</h2>'
-      +(file?'<button class="exp" data-csv="t-'+id+'" data-file="'+file+'">&#8595; CSV</button>':'')
+      +(file?'<button class="exp" data-csv="t-'+id+'" data-file="'+file+'">&#8595; Excel</button>':'')
       +'</div><div class="tw"><table id="t-'+id+'"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div></section>';
   }
 
@@ -1315,8 +1316,8 @@ window.relatorioPredial=function(){
     +'.empty{color:var(--muted);font-style:italic;padding:10px;text-align:center;}'
     +'@media print{.pr,.exp{display:none!important;}section,.kpi,header.rp{box-shadow:none;break-inside:avoid;}}';
 
-  var innerJs='function t2c(t){var r=[];t.querySelectorAll("tr").forEach(function(tr){var c=[];tr.querySelectorAll("th,td").forEach(function(x){c.push(String.fromCharCode(34)+x.textContent.trim().replace(/"/g,String.fromCharCode(34)+String.fromCharCode(34))+String.fromCharCode(34));});r.push(c.join(";"));});return r.join("\\r\\n");}'
-    +'document.querySelectorAll("[data-csv]").forEach(function(b){b.onclick=function(){var t=document.getElementById(b.getAttribute("data-csv"));if(!t)return;var csv=String.fromCharCode(65279)+t2c(t);var bl=new Blob([csv],{type:"text/csv;charset=utf-8"});var u=URL.createObjectURL(bl);var a=document.createElement("a");a.href=u;a.download=b.getAttribute("data-file")||"export.csv";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u);},2000);};});';
+  var innerJs='function cvx(t){ if(t==null) return ""; if(typeof t==="number") return t; var s=String(t).trim(); var z=s.replace(/^R[$] ?/,"").replace(/ ?(kg|d|un)$/,""); if(/^-?[0-9]{1,3}([.][0-9]{3})*(,[0-9]+)?$/.test(z)||/^-?[0-9]+(,[0-9]+)?$/.test(z)){ if(/^0[0-9]/.test(z)) return s; return parseFloat(z.split(".").join("").replace(",",".")); } return s; }function t2a(t){ var r=[]; t.querySelectorAll("tr").forEach(function(tr){ var c=[]; tr.querySelectorAll("th,td").forEach(function(x){ c.push(x.textContent.trim()); }); r.push(c); }); return r; }function xlLoad(){ return new Promise(function(ok,no){ if(window.XLSX) return ok(); var e=document.createElement("script"); e.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; e.onload=function(){ ok(); }; e.onerror=function(){ no(new Error("sem conexão com a internet")); }; document.head.appendChild(e); }); }function xl(file,aoa){ xlLoad().then(function(){ var rows=aoa.map(function(r,i){ return i===0?r:r.map(cvx); }); var ws=XLSX.utils.aoa_to_sheet(rows); ws["!cols"]=(rows[0]||[]).map(function(_,j){ var m=8; rows.forEach(function(r){ var v=r[j]; var l=(v==null?0:String(v).length); if(l>m) m=l; }); return {wch:Math.min(m+2,60)}; }); var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Dados"); XLSX.writeFile(wb,String(file||"export").replace(/[.]csv$/,"")+".xlsx"); }).catch(function(e){ alert("Não foi possível gerar o Excel: "+e.message); }); }function t2c(t){var r=[];t.querySelectorAll("tr").forEach(function(tr){var c=[];tr.querySelectorAll("th,td").forEach(function(x){c.push(String.fromCharCode(34)+x.textContent.trim().replace(/"/g,String.fromCharCode(34)+String.fromCharCode(34))+String.fromCharCode(34));});r.push(c.join(";"));});return r.join("\\r\\n");}'
+    +'document.querySelectorAll("[data-csv]").forEach(function(b){b.onclick=function(){var t=document.getElementById(b.getAttribute("data-csv"));if(!t)return;xl(b.getAttribute("data-file")||"export",t2a(t));};});';
 
   var html='<!doctype html><html data-theme="'+tema+'" lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório · Manut. Predial</title><style>'+css+'</style></head><body><div class="wrap">'
     +'<header class="rp"><div class="mark">🏢</div><div><h1>Monte Castelo <span>· Relatório Manut. Predial</span></h1><div class="meta">Período: '+periodo+' · Gerado em '+gerado+'</div></div></header>'
@@ -2389,24 +2390,34 @@ function renderProdMes(){
   tf+='<td style="padding:9px 10px;text-align:right;font-weight:700;background:var(--bg-2);border-top:2px solid var(--border);">'+pmFmt(sT)+'</td><td style="background:var(--bg-2);border-top:2px solid var(--border);"></td></tr></tfoot>';
   document.getElementById('pm-tab').innerHTML=html+'</tbody>'+tf;
 }
+/* Excel (.xlsx) com a mesma biblioteca do Comercial (SheetJS), carregada só na hora de baixar */
+function carregarXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  return new Promise(function(ok, falhou){
+    var e=document.createElement('script');
+    e.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    e.onload=function(){ ok(); }; e.onerror=function(){ falhou(new Error('sem conexão com a internet')); };
+    document.head.appendChild(e);
+  });
+}
+function baixarXLSX(arquivo, aba, aoa, larguras){
+  carregarXLSX().then(function(){
+    var ws=XLSX.utils.aoa_to_sheet(aoa); if(larguras) ws['!cols']=larguras.map(function(w){ return {wch:w}; });
+    var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, aba);
+    XLSX.writeFile(wb, arquivo);
+  }).catch(function(e){ alert('Não foi possível gerar o Excel: '+(e.message||e)); });
+}
 window.exportarProdMes=function(){
   var D=pmDados(), meses=D.meses;
   var q=String((document.getElementById('pm-busca')||{}).value||'').trim().toUpperCase();
   var lista=D.arr.filter(function(L){ return !q || L.nome.toUpperCase().indexOf(q)>=0; });
   lista.sort(function(a,b){ return pmTotal(b)-pmTotal(a); });
-  var nBR=function(v){ return (v==null?'':String(v).replace('.',',')); };
-  var linhas=[['Produto','Medida'].concat(meses.map(pmRotulo)).concat(['Total']).join(';')];
+  var r2=function(v){ return (v==null?'':Math.round(v*100)/100); };
   var medida=(pmMetrica==='fat'?'Faturamento':(pmMetrica==='kg'?'KG':'Pacotes'));
-  lista.forEach(function(L){
-    linhas.push([L.nome, medida].concat(meses.map(function(ym){
-      var v=pmValor(L,ym); return nBR(v==null?'':Math.round(v*100)/100);
-    })).concat([nBR(Math.round(pmTotal(L)*100)/100)]).join(';'));
-  });
-  var blob=new Blob(['\ufeff'+linhas.join('\n')],{type:'text/csv;charset=utf-8;'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='produtos-mes-a-mes-'+medida.toLowerCase()+'-'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click();
+  var aoa=[['Produto','Medida'].concat(meses.map(pmRotulo)).concat(['Total'])];
+  lista.forEach(function(L){ aoa.push([L.nome, medida].concat(meses.map(function(ym){ return r2(pmValor(L,ym)); })).concat([r2(pmTotal(L))])); });
+  baixarXLSX('produtos-mes-a-mes-'+medida.toLowerCase()+'-'+new Date().toISOString().slice(0,10)+'.xlsx', 'Produtos mês a mês', aoa,
+    [44,12].concat(meses.map(function(){ return 11; })).concat([13]));
 };
 
 /* ===== COMPARAR LOJAS =====
@@ -2630,13 +2641,12 @@ function renderLojas(){
 }
 window.exportarLojas=function(){
   var D=ljDados(), lista=ljLista(D), lojas=D.lojas; if(!lojas.length) return;
-  var nBR=function(v){ return v==null?'':String(Math.round(v*100)/100).replace('.',','); };
+  var r2=function(v){ return v==null?'':Math.round(v*100)/100; };
   var medida=(ljMetrica==='fat'?'Faturamento':(ljMetrica==='kg'?'KG':'Pacotes'));
-  var linhas=[['Produto','Código'].concat(lojas.map(function(lj){ return lj.nome+' ('+ljId(lj)+(ljOnde(lj)?' · '+ljOnde(lj):'')+')'; })).concat(['Total']).join(';')];
-  lista.forEach(function(R){ linhas.push([R.nome, R.cod||''].concat(lojas.map(function(lj){ return nBR(ljValor(R,lj.chave)); })).concat([nBR(ljTotal(R,lojas))]).join(';')); });
-  var blob=new Blob(['\ufeff'+linhas.join('\n')],{type:'text/csv;charset=utf-8;'});
-  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='comparar-lojas-'+medida.toLowerCase()+'-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  var aoa=[['Produto','Código'].concat(lojas.map(function(lj){ return lj.nome+' ('+ljId(lj)+(ljOnde(lj)?' · '+ljOnde(lj):'')+')'; })).concat(['Total'])];
+  lista.forEach(function(R){ aoa.push([R.nome, String(R.cod||'')].concat(lojas.map(function(lj){ return r2(ljValor(R,lj.chave)); })).concat([r2(ljTotal(R,lojas))])); });
+  baixarXLSX('comparar-lojas-'+medida.toLowerCase()+'-'+new Date().toISOString().slice(0,10)+'.xlsx', 'Comparar lojas', aoa,
+    [44,10].concat(lojas.map(function(){ return 16; })).concat([13]));
 };
 
 window.nav=function(p){
