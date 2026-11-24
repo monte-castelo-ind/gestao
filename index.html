@@ -1441,6 +1441,46 @@ function pintarSelCliente(){
   if(el.value!==atual) el.value=atual;
 }
 // documentos sintéticos no formato de comercialMensal, só do cliente escolhido
+/* ===== PERÍODO LIVRE (De/até, semana, este mês…) =====
+   O resumo por dia (comercialDiario) que o robô grava NÃO cobre o passado todo:
+   um período como 01/01/2025–31/12/2025 vinha zerado. Agora cada mês INTEIRO
+   dentro do período vem do resumo mensal (completo) e só os pedaços de mês
+   (começo e fim) vêm do resumo por dia. Se um pedaço cai antes do primeiro dia
+   que o robô guardou, _diaFalta explica no topo da tela. */
+var _diaFalta='';
+function docsComPeriodo(de, ate){
+  var out=[], cheios={}, parciais={};
+  comercialMensal.forEach(function(d){
+    var ini=mesData(d.periodo), fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59);
+    if(ini>=de && fim<=ate){ out.push(d); cheios[d.periodo]=1; }
+    else if(fim>=de && ini<=ate) parciais[d.periodo]=1;
+  });
+  var minDia=null;
+  comercialDiario.forEach(function(d){
+    if(!minDia || d.periodo<minDia) minDia=d.periodo;
+    var dt=diaData(d.periodo); if(dt>=de && dt<=ate && !cheios[d.periodo.slice(0,7)]) out.push(d);
+  });
+  _diaFalta='';
+  var falta=Object.keys(parciais).filter(function(ym){ return !minDia || ym<minDia.slice(0,7) || (ym===minDia.slice(0,7) && de<diaData(minDia)); });
+  if(falta.length) _diaFalta='⚠️ pedaço do período sem resumo por dia'+(minDia?' (o robô guarda por dia desde '+minDia.slice(8,10)+'/'+minDia.slice(5,7)+'/'+minDia.slice(0,4)+')':'')+' — escolha meses inteiros para ver tudo';
+  return out;
+}
+/* Clientes sem representante no ERP: o robô não soma esse grupo em
+   "representantes". Sai de comercialClienteMes (cliente sem .rep), pela
+   proporção de cada mês, aplicada ao faturamento do período/setor exibido. */
+var SEM_VEND='SEM VENDEDOR';
+function semVendedorNoPeriodo(docs, srcCom){
+  var porMes={};
+  docs.forEach(function(d){ var s=srcCom(d); if(!s) return; var ym=String(d.periodo).slice(0,7); porMes[ym]=(porMes[ym]||0)+(s.faturamento||0); });
+  var tot=0;
+  Object.keys(porMes).forEach(function(ym){
+    var cm=comercialClienteMes.find(function(x){ return x.periodo===ym; }); if(!cm) return;
+    var cs=cm.clientes||{}, todos=0, sem=0;
+    Object.keys(cs).forEach(function(k){ var c=cs[k]; if(!c) return; var f=c.fat||0; todos+=f; if(!c.rep) sem+=f; });
+    if(todos>0 && sem>0) tot+=porMes[ym]*sem/todos;
+  });
+  return tot;
+}
 function docsDoCliente(chave){
   var out=[];
   comercialClienteMes.forEach(function(d){
@@ -1448,7 +1488,7 @@ function docsDoCliente(chave){
     if(!c) return;
     var reg={}; if(c.reg) reg[c.reg]=c.fat||0;
     var vend={}; if(c.vend) vend[c.vend]=c.fat||0;
-    var repm={}; if(c.rep) repm[c.rep]=c.fat||0;
+    var repm={}; repm[c.rep||SEM_VEND]=c.fat||0;
     var cli={}; cli[c.nome||chave]=c.fat||0;
     // prod vem como { produto: [valor, qtd] }. A quantidade alimenta as colunas
     // Pacotes e KG (KG = pacotes x peso cadastrado). Formato antigo, só número,
@@ -1549,7 +1589,7 @@ function docsDasRotas(rotas, cliChave){
       cli[nm]=(cli[nm]||0)+f;
       reg[r]=(reg[r]||0)+f;
       if(c.vend) vend[c.vend]=(vend[c.vend]||0)+f;
-      if(c.rep)  repm[c.rep]=(repm[c.rep]||0)+f;
+      var rk=c.rep||SEM_VEND; repm[rk]=(repm[rk]||0)+f;
       var pr=c.prod||{};
       Object.keys(pr).forEach(function(n){
         var a=pr[n];
@@ -1803,7 +1843,7 @@ function render(){
     // ---------- COMERCIAL ----------
     const _um=(periodo==='tudo')||(filtroAno!=='');
     let _docs; if(_um){ _docs=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_r.de && ini<=_r.ate; }); }
-               else   { _docs=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=_r.de && dt<=_r.ate; }); }
+               else   { _docs=docsComPeriodo(_r.de, _r.ate); }
     const _fat=_docs.reduce((a,d)=>a+(d.faturamento||0),0);
     const _notas=_docs.reduce((a,d)=>a+(d.notas||0),0);
     const _ticket=_notas?_fat/_notas:0;
@@ -1811,7 +1851,7 @@ function render(){
     const _dur=_r.ate-_r.de;
     const _antDe=new Date(_r.de.getTime()-_dur-1), _antAte=new Date(_r.de.getTime()-1);
     let _docsAnt; if(_um){ _docsAnt=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_antDe && ini<=_antAte; }); }
-                  else   { _docsAnt=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=_antDe && dt<=_antAte; }); }
+                  else   { _docsAnt=docsComPeriodo(_antDe, _antAte); }
     const _fatAnt=_docsAnt.reduce((a,d)=>a+(d.faturamento||0),0);
     const _metaCom=metaDoPeriodo('comercial');
 
@@ -2017,6 +2057,7 @@ function render(){
     const _noMes=(d,de,ate)=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=de && ini<=ate; };
     // por cliente/rota só existe apuração MENSAL: o robô não guarda esse detalhe por dia
     const usarMensal=(CLI||ROT.length) ? true : ((periodo==='tudo')||(filtroAno!==''));
+    _diaFalta='';
     let docs;
     if(ROT.length){
       docs=docsDasRotas(ROT,CLI).filter(d=>_noMes(d,rr.de,rr.ate));
@@ -2025,7 +2066,7 @@ function render(){
       docs=docsDoCliente(CLI).filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=rr.de && ini<=rr.ate; });
     }
     else if(usarMensal){ docs=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=rr.de && ini<=rr.ate; }); }
-    else { docs=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=rr.de && dt<=rr.ate; }); }
+    else { docs=docsComPeriodo(rr.de, rr.ate); }
     // cartões que não fazem sentido para um cliente só saem de cena
     document.querySelectorAll('.com-global').forEach(function(el){ el.style.display=CLI?'none':''; });
     // por rota o robô não quebra dia da semana / tipo de produto, e a meta é global
@@ -2038,11 +2079,12 @@ function render(){
     const S=(CLI||ROT.length)?'':filtroSetorCom;   // cliente/rota × setor não existe na base
     const srcCom=d=> S ? ((d.setores&&d.setores[S])?d.setores[S]:null) : d;
     const fat=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.faturamento||0):0); },0);
-    (function(){ var stEl=document.getElementById('cm-status'); if(!stEl) return; if(!comCarregado){ stEl.textContent='⏳ Carregando dados do robô…'; stEl.style.color='var(--muted)'; return; } var parts=[]; var ts=comercialMeta&&comercialMeta.atualizadoEm; var dt=ts&&ts.toDate?ts.toDate():(ts?new Date(ts):null); if(dt) parts.push('Atualizado '+_haQuanto(dt)); if(S){ var temSet=docs.some(function(d){return d.setores;}); if(!temSet) parts.push('⚠️ o corte por setor aparece após o robô rodar com a classificação'); else if(fat===0) parts.push('sem faturamento para '+(S==='conf'?'Confeitaria':'Quadra')+' neste período'); } else if(docs.length===0){ parts.push('sem dados para o período selecionado'); } if(CLI){ var _nc=(comercialClienteMes[0]&&comercialClienteMes[0].topProdutos)||15; parts.push('cliente selecionado: apuração por mês inteiro, top '+_nc+' produtos'); } if(!CLI&&ROT.length){ var _tot=0; comercialMensal.forEach(function(d){ var ini=mesData(d.periodo); var fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); if(fim>=rr.de&&ini<=rr.ate) _tot+=(d.faturamento||0); }); parts.push(ROT.length+' rota'+(ROT.length>1?'s':'')+' · apuração por mês inteiro'+(_tot>0?' · '+(fat/_tot*100).toFixed(1).replace('.',',')+'% do faturamento do período':'')); } stEl.innerHTML=parts.join(' · '); stEl.style.color=(dt&&(Date.now()-dt.getTime())>3*3600*1000)?'var(--amber)':'var(--muted)'; })();
+    (function(){ var stEl=document.getElementById('cm-status'); if(!stEl) return; if(!comCarregado){ stEl.textContent='⏳ Carregando dados do robô…'; stEl.style.color='var(--muted)'; return; } var parts=[]; var ts=comercialMeta&&comercialMeta.atualizadoEm; var dt=ts&&ts.toDate?ts.toDate():(ts?new Date(ts):null); if(dt) parts.push('Atualizado '+_haQuanto(dt)); if(S){ var temSet=docs.some(function(d){return d.setores;}); if(!temSet) parts.push('⚠️ o corte por setor aparece após o robô rodar com a classificação'); else if(fat===0) parts.push('sem faturamento para '+(S==='conf'?'Confeitaria':'Quadra')+' neste período'); } else if(docs.length===0){ parts.push('sem dados para o período selecionado'); } if(_diaFalta) parts.push(_diaFalta); if(CLI){ var _nc=(comercialClienteMes[0]&&comercialClienteMes[0].topProdutos)||15; parts.push('cliente selecionado: apuração por mês inteiro, top '+_nc+' produtos'); } if(!CLI&&ROT.length){ var _tot=0; comercialMensal.forEach(function(d){ var ini=mesData(d.periodo); var fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); if(fim>=rr.de&&ini<=rr.ate) _tot+=(d.faturamento||0); }); parts.push(ROT.length+' rota'+(ROT.length>1?'s':'')+' · apuração por mês inteiro'+(_tot>0?' · '+(fat/_tot*100).toFixed(1).replace('.',',')+'% do faturamento do período':'')); } stEl.innerHTML=parts.join(' · '); stEl.style.color=(dt&&(Date.now()-dt.getTime())>3*3600*1000)?'var(--amber)':'var(--muted)'; })();
     const reg=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.registros||0):0); },0);
     const notas=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.notas||0):0); },0);
     const mC={},mP={},mR={},mV={},mRep={},mTipo={}, mTipoKg={}, mPQ={};
     docs.forEach(d=>{ const s=srcCom(d); if(!s) return; mergeMapa(mC,s.clientes); mergeMapa(mP,s.produtos); mergeMapa(mR,s.regioes); mergeMapa(mV,s.vendedores); mergeMapa(mRep,s.representantes); mergeMapa(mTipo,s.tiposProduto); mergeMapa(mTipoKg,s.tiposProdutoKg); mergeMapa(mPQ,s.produtosQtd); });
+    if(!CLI && !ROT.length){ const _sv=semVendedorNoPeriodo(docs, srcCom); if(_sv>=1) mRep[SEM_VEND]=(mRep[SEM_VEND]||0)+_sv; }
     // período anterior (mesmo tamanho) para comparativo/alertas
     const _durC=rr.ate-rr.de;
     const _antDeC=new Date(rr.de.getTime()-_durC-1), _antAteC=new Date(rr.de.getTime()-1);
@@ -2050,7 +2092,7 @@ function render(){
     if(ROT.length){ docsAnt=docsDasRotas(ROT,CLI).filter(d=>_noMes(d,_antDeC,_antAteC)); }
     else if(CLI){ docsAnt=docsDoCliente(CLI).filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_antDeC && ini<=_antAteC; }); }
     else if(usarMensal){ docsAnt=comercialMensal.filter(d=>{ const ini=mesData(d.periodo); const fim=new Date(ini.getFullYear(),ini.getMonth()+1,0,23,59,59); return fim>=_antDeC && ini<=_antAteC; }); }
-    else { docsAnt=comercialDiario.filter(d=>{ const dt=diaData(d.periodo); return dt>=_antDeC && dt<=_antAteC; }); }
+    else { var _dfSalvo=_diaFalta; docsAnt=docsComPeriodo(_antDeC, _antAteC); _diaFalta=_dfSalvo; }
     const fatAnt=docsAnt.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.faturamento||0):0); },0), notasAnt=docsAnt.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.notas||0):0); },0);
     const mCa={},mPa={},mPQa={};
     docsAnt.forEach(d=>{ const s=srcCom(d); if(!s) return; mergeMapa(mCa,s.clientes); mergeMapa(mPa,s.produtos); mergeMapa(mPQa,s.produtosQtd); });
@@ -2158,7 +2200,7 @@ function kgPorCliente(rr, S, CLI, ROT){
       var nm=c.nome||k;
       mC[nm]=(mC[nm]||0)+kg; mR[r]=(mR[r]||0)+kg;
       if(c.vend) mV[c.vend]=(mV[c.vend]||0)+kg;
-      if(c.rep)  mRep[c.rep]=(mRep[c.rep]||0)+kg;
+      var rk=c.rep||SEM_VEND; mRep[rk]=(mRep[rk]||0)+kg;
     });
   });
   return { mC:mC, mR:mR, mV:mV, mRep:mRep, temQtd:temQtd };
