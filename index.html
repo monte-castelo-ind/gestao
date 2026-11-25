@@ -783,7 +783,7 @@ html[data-mc="diretoria"]{ --area:#f2b705 !important; --area-rgb:242,183,5 !impo
           <div class="card"><div class="card-title">Top produtos</div><div class="card-sub">No período · por faturamento</div><div id="cm-produtos"></div></div>
         </div>
         <div class="grid cols-2" style="margin-top:16px;">
-          <div class="card"><div class="card-title">Representantes · mais venderam</div><div class="card-sub">No período · por faturamento</div><div id="cm-rep-mais"></div></div>
+          <div class="card"><div class="card-title">Representantes · mais venderam</div><div class="card-sub">No período · por faturamento · todos os representantes</div><div id="cm-rep-mais"></div></div>
           <div class="card com-global"><div class="card-title">Vendas por tipo de produto</div><div class="card-sub">No período · por faturamento</div><div id="cm-tipos"></div></div>
           <div class="card com-global"><div class="card-title">Vendas por tipo de produto</div><div class="card-sub">No período · por quilo (só itens vendidos em KG)</div><div id="cm-tipos-kg"></div></div>
         </div>
@@ -1465,21 +1465,20 @@ function docsComPeriodo(de, ate){
   if(falta.length) _diaFalta='⚠️ pedaço do período sem resumo por dia'+(minDia?' (o robô guarda por dia desde '+minDia.slice(8,10)+'/'+minDia.slice(5,7)+'/'+minDia.slice(0,4)+')':'')+' — escolha meses inteiros para ver tudo';
   return out;
 }
-/* Clientes sem representante no ERP: o robô não soma esse grupo em
-   "representantes". Sai de comercialClienteMes (cliente sem .rep), pela
-   proporção de cada mês, aplicada ao faturamento do período/setor exibido. */
+/* "SEM VENDEDOR" = faturamento do período − soma dos representantes (o robô
+   não soma quem está sem representante). Só aparece se a diferença passar de
+   0,5% do faturamento. (A versão de 24/11 estimava pela base por cliente e
+   contava em dobro: ali o campo do representante falta em muitos clientes.) */
 var SEM_VEND='SEM VENDEDOR';
-function semVendedorNoPeriodo(docs, srcCom){
-  var porMes={};
-  docs.forEach(function(d){ var s=srcCom(d); if(!s) return; var ym=String(d.periodo).slice(0,7); porMes[ym]=(porMes[ym]||0)+(s.faturamento||0); });
-  var tot=0;
-  Object.keys(porMes).forEach(function(ym){
-    var cm=comercialClienteMes.find(function(x){ return x.periodo===ym; }); if(!cm) return;
-    var cs=cm.clientes||{}, todos=0, sem=0;
-    Object.keys(cs).forEach(function(k){ var c=cs[k]; if(!c) return; var f=c.fat||0; todos+=f; if(!c.rep) sem+=f; });
-    if(todos>0 && sem>0) tot+=porMes[ym]*sem/todos;
+/* todos os representantes que já apareceram no ERP — o cartão lista todos,
+   inclusive quem não vendeu no período (aparece com zero) */
+function todosReps(){
+  var u={};
+  comercialMensal.forEach(function(d){
+    Object.keys(d.representantes||{}).forEach(function(k){ u[k]=1; });
+    var se=d.setores||{}; Object.keys(se).forEach(function(z){ Object.keys((se[z]||{}).representantes||{}).forEach(function(k){ u[k]=1; }); });
   });
-  return tot;
+  delete u[SEM_VEND]; delete u['']; return Object.keys(u);
 }
 function docsDoCliente(chave){
   var out=[];
@@ -1488,7 +1487,7 @@ function docsDoCliente(chave){
     if(!c) return;
     var reg={}; if(c.reg) reg[c.reg]=c.fat||0;
     var vend={}; if(c.vend) vend[c.vend]=c.fat||0;
-    var repm={}; repm[c.rep||SEM_VEND]=c.fat||0;
+    var repm={}; if(c.rep) repm[c.rep]=c.fat||0;
     var cli={}; cli[c.nome||chave]=c.fat||0;
     // prod vem como { produto: [valor, qtd] }. A quantidade alimenta as colunas
     // Pacotes e KG (KG = pacotes x peso cadastrado). Formato antigo, só número,
@@ -1589,7 +1588,7 @@ function docsDasRotas(rotas, cliChave){
       cli[nm]=(cli[nm]||0)+f;
       reg[r]=(reg[r]||0)+f;
       if(c.vend) vend[c.vend]=(vend[c.vend]||0)+f;
-      var rk=c.rep||SEM_VEND; repm[rk]=(repm[rk]||0)+f;
+      if(c.rep)  repm[c.rep]=(repm[c.rep]||0)+f;
       var pr=c.prod||{};
       Object.keys(pr).forEach(function(n){
         var a=pr[n];
@@ -2084,7 +2083,8 @@ function render(){
     const notas=docs.reduce((a,d)=>{ const s=srcCom(d); return a+(s?(s.notas||0):0); },0);
     const mC={},mP={},mR={},mV={},mRep={},mTipo={}, mTipoKg={}, mPQ={};
     docs.forEach(d=>{ const s=srcCom(d); if(!s) return; mergeMapa(mC,s.clientes); mergeMapa(mP,s.produtos); mergeMapa(mR,s.regioes); mergeMapa(mV,s.vendedores); mergeMapa(mRep,s.representantes); mergeMapa(mTipo,s.tiposProduto); mergeMapa(mTipoKg,s.tiposProdutoKg); mergeMapa(mPQ,s.produtosQtd); });
-    if(!CLI && !ROT.length){ const _sv=semVendedorNoPeriodo(docs, srcCom); if(_sv>=1) mRep[SEM_VEND]=(mRep[SEM_VEND]||0)+_sv; }
+    if(!CLI && !ROT.length){ const _soma=Object.keys(mRep).reduce((a,k)=>a+(mRep[k]||0),0), _sv=fat-_soma; if(_sv>Math.max(1,fat*0.005)) mRep[SEM_VEND]=_sv; }
+    if(!CLI) todosReps().forEach(function(n){ if(!(n in mRep)) mRep[n]=0; });
     // período anterior (mesmo tamanho) para comparativo/alertas
     const _durC=rr.ate-rr.de;
     const _antDeC=new Date(rr.de.getTime()-_durC-1), _antAteC=new Date(rr.de.getTime()-1);
@@ -2114,7 +2114,7 @@ function render(){
     document.getElementById('cm-mes').innerHTML=faturamentoChart(ROT.length?docsDasRotas(ROT,CLI):(CLI?docsDoCliente(CLI):comercialMensal), S);
     document.getElementById('cm-clientes').innerHTML=rankingHTML(mapaParaArr(mC,8), fmtMoney);
     document.getElementById('cm-produtos').innerHTML=lollipopHTML(mapaParaArr(mP,8), fmtMoney);
-    document.getElementById('cm-rep-mais').innerHTML=rankingHTML(mapaParaArr(mRep,8), fmtMoney);
+    document.getElementById('cm-rep-mais').innerHTML=rankingHTML(mapaParaArr(mRep,9999), fmtMoney);
     document.getElementById('cm-regioes').innerHTML=barsMoneyHTML(mapaParaArr(mR,8));
     const totalTipo=Object.keys(mTipo).reduce((a,k)=>a+mTipo[k],0);
     document.getElementById('cm-tipos').innerHTML=donutMoneyHTML(mapaParaDonut(mTipo,7), totalTipo, 'faturamento');
@@ -2200,7 +2200,7 @@ function kgPorCliente(rr, S, CLI, ROT){
       var nm=c.nome||k;
       mC[nm]=(mC[nm]||0)+kg; mR[r]=(mR[r]||0)+kg;
       if(c.vend) mV[c.vend]=(mV[c.vend]||0)+kg;
-      var rk=c.rep||SEM_VEND; mRep[rk]=(mRep[rk]||0)+kg;
+      if(c.rep)  mRep[c.rep]=(mRep[c.rep]||0)+kg;
     });
   });
   return { mC:mC, mR:mR, mV:mV, mRep:mRep, temQtd:temQtd };
@@ -2275,7 +2275,8 @@ function comRenderKg(o){
   comCardTxt('cm-produtos', null, 'No período · por kg');
   document.getElementById('cm-produtos').innerHTML=lollipopHTML(mapaParaArr(mPkg,8), fmtKgU);
   comCardTxt('cm-rep-mais', null, 'Por kg · mês inteiro');
-  document.getElementById('cm-rep-mais').innerHTML=rankingHTML(mapaParaArr(cl.mRep,8), fmtKgU);
+  if(!CLI) todosReps().forEach(function(n){ if(!(n in cl.mRep)) cl.mRep[n]=0; });
+  document.getElementById('cm-rep-mais').innerHTML=rankingHTML(mapaParaArr(cl.mRep,9999), fmtKgU);
 
   // ---- Tipo de produto: fica só o donut em kg ----
   var ct=document.getElementById('cm-tipos'), ctc=(ct&&ct.closest)?ct.closest('.card'):null; if(ctc) ctc.style.display='none';
