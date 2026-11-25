@@ -299,6 +299,11 @@ document.documentElement.setAttribute('data-theme',t);document.documentElement.s
   .ac-salvar{ background:var(--primary); color:#fff; border:none; border-radius:10px; padding:11px 18px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
   .ac-salvar:disabled{ opacity:.45; cursor:default; }
   .ac-rastro{ font-size:11.5px; color:var(--muted); margin-top:4px; }
+  .ac-copiar{ display:flex; gap:8px; margin-top:12px; }
+  .ac-copiar .ac-sel{ flex:1; min-width:0; }
+  .ac-copiar-bt{ background:var(--card-2); border:1px solid var(--border); color:var(--text); border-radius:9px; padding:7px 14px;
+                 font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .ac-copiar-bt:hover{ border-color:var(--primary); }
   @media (max-width:760px){
     .ac-ed{ top:auto; left:0; width:100vw; height:92vh; border-left:none; border-top:1px solid var(--border); border-radius:18px 18px 0 0; overflow:hidden; }
     .ac-tags{ flex-direction:column; align-items:flex-end; }
@@ -678,6 +683,10 @@ html[data-mc="diretoria"]{ --area:#f2b705 !important; --area-rgb:242,183,5 !impo
         <input id="ac-ed-nome" class="ac-ed-nome" placeholder="Nome" oninput="acSetNome(this.value)" aria-label="Nome">
         <div class="ac-email" id="ac-ed-email"></div>
         <div class="ac-rastro" id="ac-ed-rastro"></div>
+        <div class="ac-copiar" id="ac-copiar">
+          <select class="ac-sel" id="ac-copia-de" aria-label="Copiar os acessos de outra pessoa"></select>
+          <button class="ac-copiar-bt" onclick="acCopiar()">Copiar</button>
+        </div>
       </div>
       <div class="ac-ed-corpo" id="ac-ed-corpo"></div>
       <div class="ac-ed-pe">
@@ -2984,7 +2993,38 @@ window.acAbrir=function(uid){
   var por=u.acessosAlteradoPor, em=acDataTxt(u.acessosAlteradoEm);
   document.getElementById('ac-ed-rastro').textContent= por ? 'Acessos alterados por '+por+(em?' em '+em:'') : '';
   acSt('',false); acPintarEditor();
+  var cs=document.getElementById('ac-copia-de');
+  if(cs) cs.innerHTML='<option value="">Copiar os acessos de outra pessoa…</option>'
+    + acUsers.filter(function(x){ return x.uid!==uid; })
+        .sort(function(a,b){ return acNomeDe(a).localeCompare(acNomeDe(b),'pt-BR'); })
+        .map(function(x){ return '<option value="'+acEsc(x.uid)+'">'+acEsc(acNomeDe(x))+' — '+acEsc(acResumo(x))+'</option>'; }).join('');
   document.getElementById('ac-fundo').classList.add('show'); document.getElementById('ac-ed').classList.add('show');
+};
+/* Copiar acessos (nov/2026): deixa a pessoa aberta com as MESMAS chaves de outra — todos os apps, as abas
+   escondidas do Custos, os setores do Produlog, o papel no Campo e também as chaves que esta tela não
+   mostra (ex.: as do Comercial ligadas em Usuários e níveis, como "Acordos de todos" e "Gerencia pedidos").
+   Não copia o nome. Só muda o rascunho: nada é gravado até clicar em Salvar (que mostra quantas mudanças
+   e pede confirmação se virar admin). A própria conta não perde o admin nem é bloqueada. */
+window.acCopiar=function(){
+  var sel=document.getElementById('ac-copia-de'), uidSrc=sel&&sel.value;
+  if(!uidSrc){ acSt('Escolha de quem copiar.', true); return; }
+  if(!acDraft || acSalvando) return;
+  var src=acUsers.find(function(x){ return x.uid===uidSrc; }); if(!src) return;
+  var eu=acSou(acUid), d=acParaEdicao(src);
+  Object.keys(d).forEach(function(k){
+    if(k==='nome') return;
+    if(eu && (k==='ativo' || k==='admin')) return;
+    acDraft[k]=JSON.parse(JSON.stringify(d[k]));
+  });
+  /* chaves sim/não que esta tela não conhece, de quem copia ou de quem recebe: ficam iguais às de quem copia */
+  var alvo=acUsers.find(function(x){ return x.uid===acUid; })||{}, meta=['uid','email','nome','role','ativo','criadoEm','acessosAlteradoPor','acessosAlteradoEm'], ch={};
+  [src, alvo].forEach(function(u){ Object.keys(u).forEach(function(k){ if(AC_CONHECIDOS.indexOf(k)<0 && meta.indexOf(k)<0 && typeof u[k]==='boolean') ch[k]=1; }); });
+  var extras=Object.keys(ch);
+  extras.forEach(function(k){ acDraft[k]=src[k]===true; });
+  acPintarEditor();
+  var n=Object.keys(acMudancas()).length;
+  acSt(n ? 'Copiado de '+acNomeDe(src)+': '+n+' mudança'+(n>1?'s':'')+(extras.length?' (inclui '+extras.length+' chave'+(extras.length>1?'s':'')+' de outros apps)':'')+'. Confira e clique em Salvar.'
+         : acNomeDe(src)+' já tem os mesmos acessos.', false);
 };
 // só os campos que a tela edita, com padrão para os que não existem no documento
 function acParaEdicao(u){
