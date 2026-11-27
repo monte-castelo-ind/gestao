@@ -2914,7 +2914,6 @@ window.nav=function(p){
   if(p==='acessos' && currentRole!=='admin') p='overview';   // aba só do admin
   if(p==='config' && currentRole!=='admin' && currentRole!=='operador') p='overview';
   pagina=p;
-  try{ localStorage.setItem('mc_last_page',p); }catch(e){}
   periodo='mes'; filtroAno=''; filtroMes=''; filtroDe=''; filtroAte=''; filtroSemana=''; filtroSetorCom=''; filtroClienteCom='';
   (function(){ var sa=document.getElementById('sel-ano'),sm=document.getElementById('sel-mes'),ss=document.getElementById('sel-semana'),rd=document.getElementById('range-de'),ra=document.getElementById('range-ate'),bx=document.getElementById('range-box'); if(sa)sa.value=''; if(sm)sm.value=''; if(ss)ss.value=''; if(rd)rd.value=''; if(ra)ra.value=''; if(bx)bx.style.display='none'; })();
   (function(){ var w=document.getElementById('setor-wrap'),dv=document.getElementById('setor-div'),sc=document.getElementById('sel-setor-com'),cc=document.getElementById('sel-cliente-com'); var vis=(p==='comercial'); if(w)w.style.display=vis?'inline-flex':'none'; if(dv)dv.style.display=vis?'inline-block':'none'; if(sc)sc.value=''; filtroSetorCom=''; if(cc)cc.value=''; filtroClienteCom=''; filtroRotasCom=[]; var rb=document.getElementById('rotas-box'); if(rb)rb.style.display='none'; var rbu=document.getElementById('rotas-busca'); if(rbu)rbu.value=''; pintarBtnRotas(); })();
@@ -3115,7 +3114,8 @@ function negar(msg){ document.getElementById('negado-msg').textContent=msg; docu
 function liberar(d){
   document.getElementById('s-negado').style.display='none'; document.getElementById('s-negado').classList.remove('active');
   document.getElementById('app').style.display='flex';
-  try{ if(!_navRestaurado){ _navRestaurado=true; var _lp=localStorage.getItem('mc_last_page'); if(_lp && TITLES[_lp] && document.getElementById('page-'+_lp)) nav(_lp); } }catch(e){}
+  /* sempre abre na Visão Geral (pedido do João, 27/11/2026): não volta mais para a última tela usada */
+  try{ if(!_navRestaurado){ _navRestaurado=true; localStorage.removeItem('mc_last_page'); nav('overview'); } }catch(e){}
   // botao do relatorio: so quem tem relatorios:true no documento de usuarios
   var _rb=document.getElementById('cm-rel-barra');
   if(_rb) _rb.style.display = currentRelatorios ? 'flex' : 'none';
